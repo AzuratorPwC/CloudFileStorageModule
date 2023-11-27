@@ -1,0 +1,244 @@
+
+trigger: none
+
+
+parameters:
+- name: azureConnWebSite
+  displayName: AzureConnection WebSite
+  type: string
+  default: storageaccountpythonlibConn
+
+- name: rgWebSite
+  displayName: ResourceGroup WebSite
+  type: string
+  default: storageaccountpythonlib
+
+- name: azureConnTestEnv
+  displayName: AzureConnection TestEnv
+  type: string
+  default: storageaccountpythonlibConn
+
+- name: rgTestEnv
+  displayName: ResourceGroup Test StorageAccount
+  type: string
+  default: storageaccountpythonlib
+
+- name: isCreateTag
+  displayName: Create Tag? (only on master)
+  type: boolean
+  default: true
+
+- name: startDevelopMinor
+  displayName: First Minor Number (only on develop)
+  type: number
+  default: 0
+
+
+variables:
+  pkg_name: "cloud-storage-pwc"
+  pkg_feed: "PwCDataLibs"
+  pkg_version:  "0"
+  master_minor: "100"
+  varresourcegroup: "storageaccountpythonlib"
+  ${{ if eq(variables['Build.SourceBranchName'], 'master') }}:
+    minor: ${{ variables['master_minor'] }}
+    varpkg_feed: "$(pkg_feed)"
+    varpkg_name: "$(pkg_name)"
+  ${{ else }}:
+    minor: $[counter( variables['pkg_version'], ${{ parameters.startDevelopMinor }} ) ]
+    varpkg_feed: "$(pkg_feed)_dev1"
+    varpkg_name: "$(pkg_name)-dev"
+#${{ if eq(variables['Build.SourceBranchName'], 'develop') }}:
+name: $(Build.SourceBranchName)_${{ variables['pkg_version'] }}.$(minor)
+
+
+stages:
+- stage: TestAndBuild
+  jobs:
+  - job: TestAndBuildJob
+    pool:
+      name: Azure Pipelines
+      vmImage: ubuntu-latest
+    steps:
+
+    - task: PowerShell@2
+      displayName: 'Prepare Wheel Library File - pyproject.toml'
+      inputs:
+        targetType: filePath
+        filePath: './deploy/config_toml.ps1'
+        arguments: '-pversion ${{ variables[''pkg_version''] }}.$(minor) -pname $(varpkg_name) ' 
+
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: 3.7
+      displayName: 'Use Python 3.7'
+
+    - script: |
+        python -m pip install --upgrade pip
+        python -m pip install pytest pytest-azurepipelines
+        python -m pip install --upgrade build setuptools
+        python -m pip install  -r requirements.txt
+        python -m pip install --upgrade sphinx sphinx-rtd-theme
+      displayName: 'Install Dependencies To Python'
+
+    - task: AzureCLI@2
+      name: create_test_enviroment
+      inputs:
+        azureSubscription: ${{ parameters.azureConnTestEnv }} #storageaccountpythonlibConn
+        scriptType: pscore
+        scriptPath: 'deploy/test_env.ps1'
+        arguments: '-pprocess create -ppkgname $(pkg_name) -pversion ${{ variables[''pkg_version''] }}$(minor) -prg ${{ parameters.rgTestEnv }} '
+        addSpnToEnvironment: true
+      displayName: 'Create Test Enviroment In Azure'
+      enabled: false
+
+    - script: docker run -d -p 10000:10000 -p 10001:10001 -p 10002:10002 mcr.microsoft.com/azure-storage/azurite
+      displayName: 'docker storge azurite'
+
+
+    - script: |
+        python -m pytest --storageaccount-name "http://127.0.0.1:10000/devstoreaccount1"  --account-key "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="  tests/BlobClass/
+#        python -m pytest --storageaccount-name $(storageBlobNameTest)  --account-key $(storageBlobNameKeyTest)  tests/BlobClass/
+#        python -m pytest  tests/BlobClass/
+      displayName: 'Start Test'
+
+    - task: AzureCLI@2
+      name: drop_test_enviroment
+      inputs:
+        azureSubscription:  ${{ parameters.azureConnTestEnv }}
+        scriptType: pscore
+        scriptPath: 'deploy/test_env.ps1'
+        arguments: '-pprocess drop -prg ${{ parameters.rgTestEnv }} -pstorageblob $(storageBlobNameTest) -pstorageadl $(storageDatalakeNameTest)'
+        addSpnToEnvironment: true
+      displayName: 'Drop Test Enviroment In Azure'
+      condition: always()
+      enabled: false
+      
+    - script: |
+        cd $(System.DefaultWorkingDirectory)/docs
+        make html
+        ls build/
+      displayName: 'Generate Web Site Files'
+      condition: eq(variables['Build.SourceBranchName'], 'master')
+
+    - task: PowerShell@2
+      displayName: 'Change Python Module Path For Compile Wheel'
+      inputs:
+        targetType: filePath
+        filePath: './deploy/config_modulepath.ps1'
+
+    - script: |
+        python -m build
+        ls dist/
+      displayName: 'Compile Wheel'
+
+    - task: AzureCLI@2
+      name: doc_infrastructure
+      inputs:
+        azureSubscription: ${{ parameters.azureConnTestEnv }}
+        scriptType: pscore
+        scriptPath: 'deploy/web_env.ps1'
+        arguments: '-prg ${{ parameters.rgTestEnv }}'
+        addSpnToEnvironment: true
+      displayName: 'Create Web Infrastructure In Azure'
+      condition: eq(variables['Build.SourceBranchName'], 'master')
+
+
+    - task: CopyFiles@2
+      displayName: 'Put Web Site Files To Artifact'
+      inputs:
+        SourceFolder: 'docs/build/html'
+ #       contents: 'docs/build/html/'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)/html'
+      condition: eq(variables['Build.SourceBranchName'], 'master')
+
+    - task: CopyFiles@2
+      displayName: 'Put Web Server(Nginx) Files To Artifact'
+      inputs:
+        SourceFolder: 'src/wep_app_doc/nginx_config'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)/nginx_config'
+      condition: eq(variables['Build.SourceBranchName'], 'master')
+        
+    - task: CopyFiles@2
+      displayName: 'Put Wheel Files To Artifact'
+      inputs:
+        SourceFolder: 'dist'
+        targetFolder: '$(Build.ArtifactStagingDirectory)/dist'
+
+    - publish: '$(Build.ArtifactStagingDirectory)'
+      artifact: whllib
+      displayName: 'Publish Artifact To Deploy'
+
+
+- stage: Deploy
+  dependsOn: TestAndBuild
+  variables:
+    storageKey: $[ stageDependencies.TestAndBuild.TestAndBuildJob.outputs['doc_infrastructure.storageKey'] ]
+    storageName: $[ stageDependencies.TestAndBuild.TestAndBuildJob.outputs['doc_infrastructure.storageName'] ]
+  jobs:
+  - deployment: Deploy
+    pool:
+      vmImage: ubuntu-latest
+    environment: ${{variables['Build.SourceBranchName'] }}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+            - task: DownloadPipelineArtifact@2
+              displayName: 'Get Pipeline Artifact'
+              inputs:
+                buildType: 'current'
+                artifactName: 'whllib'
+                targetPath: '$(Pipeline.Workspace)/whllib'
+              enabled: true
+
+            - task: UsePythonVersion@0
+              inputs:
+                versionSpec: '3.7'
+              displayName: 'Use Python 3.7'
+
+            - script: |
+                python -m pip install --upgrade pip
+                python -m pip install --upgrade twine
+              displayName: 'Install dependencies to python'
+
+
+            - task: TwineAuthenticate@1
+              inputs:
+                artifactFeed: "$(System.TeamProject)/$(varpkg_feed)"
+              displayName: 'Twine Authenticate'
+
+            - script: |
+                twine upload -r "$(varpkg_feed)" --config-file $(PYPIRC_PATH) '$(Pipeline.Workspace)/whllib/dist/*.whl'
+              displayName: 'Upload Wheel Library to AzureDevOps'
+              name: upload_wheel
+
+
+            - task: AzureCLI@2
+              inputs:
+                azureSubscription: ${{ parameters.azureConnTestEnv }}
+                scriptType: 'bash'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                    az storage file upload-batch --destination https://$(storageName).file.core.windows.net/sphinxdocumentation --destination-path html --source whllib/html --account-key "$(storageKey)" 
+                    az storage file upload-batch --destination https://$(storageName).file.core.windows.net/nginxconfiguration  --source whllib/nginx_config --account-key "$(storageKey)" 
+                addSpnToEnvironment: true
+                workingDirectory: '$(Pipeline.Workspace)'
+              condition: and(succeeded(),eq(variables['Build.SourceBranchName'], 'master'))
+              displayName: 'Upload Web Site Files And Web Server To Infrastructure'
+              
+
+            - checkout: self
+              persistCredentials: true
+
+            - script: |
+                git config --global user.email "$(Build.RequestedForEmail)"
+                git config --global user.name "$(Build.RequestedForEmail)"
+
+                git tag -a $(pkg_name)-v${{ variables['pkg_version'] }}.$(minor) -m 'release version' 
+                git push --tags
+              workingDirectory: $(Build.SourcesDirectory)
+              displayName: Create Tag $(pkg_name)-v${{ variables['pkg_version'] }}.$(minor)
+              
+              condition: and(succeeded(),eq(variables['Build.SourceBranchName'], 'master'),${{ parameters.isCreateTag }} )
