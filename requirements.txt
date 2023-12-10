@@ -4,5 +4,3 @@ azure-storage-file-datalake
 azure-storage-blob
 pyarrow==10.0.0
 xlsxwriter==3.0.3
-ipython
-ipykernel
