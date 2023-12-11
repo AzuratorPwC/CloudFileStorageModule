@@ -9,7 +9,7 @@ docs/source/generated/*
 **/*.tar.gz
 # Azure Functions localsettings file
 local.settings.json
-**/*dev*
+
 # User-specific files
 *.suo
 *.user
