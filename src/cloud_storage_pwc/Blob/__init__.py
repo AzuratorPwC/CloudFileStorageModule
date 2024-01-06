@@ -92,7 +92,7 @@ class Blob(StorageAccountVirtualClass):
         #content_settings = ContentSettings(content_encoding=sourceEncoding,content_type = "text/csv")
         new_blob_client.upload_blob(bytes(inputbytes),overwrite=isOverWrite)
         
-    def read_csv_file(self,containerName:str,directoryPath:str,sourceFileName:str,engine:('pandas','polars') ='pandas',sourceEncoding:str = "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines = True,addStrTechCol:bool=False):
+    def read_csv_file(self,containerName:str,directoryPath:str,sourceFileName:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',sourceEncoding:str = "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines = True,addStrTechCol:bool=False):
         
         if not directoryPath == '' and not directoryPath.endswith('/'):
             path = directoryPath +"/"+sourceFileName
@@ -113,7 +113,7 @@ class Blob(StorageAccountVirtualClass):
             df['techSourceFile'] = path[path.rfind("/")+1:len(path)]
         return df
     
-    def read_csv_folder(self,containerName:str,directoryPath:str,engine:('pandas','polars') ='pandas',includeSubfolders:list=None,sourceEncoding :str= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines=True,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
+    def read_csv_folder(self,containerName:str,directoryPath:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',includeSubfolders:list=None,sourceEncoding :str= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines=True,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
         listFiles = self.ls_files(containerName,directoryPath, recursive=recursive)
         
         if  includeSubfolders:
@@ -136,7 +136,7 @@ class Blob(StorageAccountVirtualClass):
                     df = pl.concat([df, dfNew])
                     
         return df
-    def read_excel_file(self,containerName:str,directoryPath:str,sourceFileName:str,engine:('pandas','polars') ='pandas',skipRows:int = 0,isFirstRowAsHeader:bool = False,sheets:list()=None,addStrTechCol:bool=False):
+    def read_excel_file(self,containerName:str,directoryPath:str,sourceFileName:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',skipRows:int = 0,isFirstRowAsHeader:bool = False,sheets:list()=None,addStrTechCol:bool=False):
         if not directoryPath == '' and not directoryPath.endswith('/'):
             path = directoryPath +"/"+sourceFileName
         else:
@@ -343,7 +343,7 @@ class Blob(StorageAccountVirtualClass):
                 #new_client_parq = container_client.get_blob_client(directoryPath +"/"+f"{uuid.uuid4().hex}.parquet")
                 #new_client_parq.upload_blob(buf.getvalue().to_pybytes(),overwrite=True)
 
-    def save_json_file(self, df: [pd.DataFrame, pl.DataFrame], containerName: str, directory: str, file:str = None, engine:['polars', 'pandas'] = 'polars', orient:['records', 'columns'] = 'records', test='x'):   
+    def save_json_file(self, df: [pd.DataFrame, pl.DataFrame], containerName: str, directory: str, file:str = None, engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars', orient:['records', 'columns'] = 'records', test='x'):   
 
         if isinstance(df, pd.DataFrame):
             if not(df.empty):
