@@ -15,6 +15,11 @@ class DataFromExcel:
         self.data = df
         self.sheet = sheetName
 
+def __addTechColumns__(df:[pd.DataFrame, pl.DataFrame],containerName: str=None,directoryPath:str=None,file:str = None):
+    df['techContainer'] = containerName
+    df['techFolderPath'] = directoryPath
+    df['techSourceFile'] = file
+    return df
 
 
 class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
@@ -59,10 +64,6 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 callable(subclass.save_listdataframe_as_xlsx) and
                 hasattr(subclass, 'create_empty_file') and 
                 callable(subclass.create_empty_file) and
-                hasattr(subclass, 'create_container') and 
-                callable(subclass.create_container) and
-                hasattr(subclass, 'delete_container') and 
-                callable(subclass.delete_container) and
                 hasattr(subclass, '_check_is_blob') and 
                 callable(subclass._check_is_blob) and
                 hasattr(subclass, 'save_json_file') and
@@ -92,14 +93,20 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         elif engine =='polars':
             df = pl.read_parquet(BytesIO(bytes),columns=columns)
         return df
+    @classmethod
+    def create_container(self,containerName : str):
+        container_client = self.__service_client.get_container_client(container=containerName)   
+        if not container_client.exists():
+            self.__service_client.create_container(name=containerName)
+        
+    @classmethod
+    def delete_container(self,containerName : str):
+        self.__service_client.delete_container(name=containerName)    
     
     @abc.abstractmethod
     def _check_is_blob(self):
         """info"""
         raise NotImplementedError
-
-    
-    
     
     @abc.abstractmethod
     def save_binary_file(self):

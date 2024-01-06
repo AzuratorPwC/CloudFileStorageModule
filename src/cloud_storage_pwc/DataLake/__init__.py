@@ -1,5 +1,6 @@
 
 from ..StorageAccountVirtualClass import *
+from ..StorageAccountVirtualClass import __addTechColumns__
 from azure.storage.filedatalake import DataLakeServiceClient, ContentSettings
 
 from azure.identity import DefaultAzureCredential
@@ -80,10 +81,7 @@ class DataLake(StorageAccountVirtualClass):
         df = self.read_csv_bytes(download_bytes,engine,sourceEncoding,columnDelimiter,isFirstRowAsHeader,skipRows,skipBlankLines)
         
         if addStrTechCol:
-            df['techContainer'] = containerName
-            df['techFolderPath'] = directoryPath.replace("\\","/")
-            df['techSourceFile'] = sourceFileName
-        
+            df =  __addTechColumns__(df,containerName,directoryPath.replace("\\","/"),sourceFileName)
         return df
     
     def read_csv_folder(self,containerName:str,directoryPath:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',includeSubfolders:list=None,sourceEncoding :StorageAccountVirtualClass._ENCODING_TYPES= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines=True,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
@@ -119,9 +117,7 @@ class DataLake(StorageAccountVirtualClass):
         for sheet in workbook_sheetnames:
             dff = pd.read_excel(workbook, sheet_name = sheet,skiprows=skipRows, index_col = None, header = isFirstRowAsHeader)
             if addStrTechCol:
-                dff['techContainer'] = containerName
-                dff['techFolderPath'] = directoryPath.replace("\\","/")
-                dff['techSourceFile'] = sourceFileName
+                df =  __addTechColumns__(df,containerName,directoryPath.replace("\\","/"),sourceFileName)
             
             list_of_dff.append(DataFromExcel(dff,sheet))
             
@@ -305,9 +301,7 @@ class DataLake(StorageAccountVirtualClass):
         download_bytes = download.readall()
         df = self.read_parquet_bytes(bytes=download_bytes,columns=columns)
         if addStrTechCol:
-            df['techContainer'] = containerName
-            df['techFolderPath'] = directoryPath.replace("\\","/")
-            df['techSourceFile'] = sourceFileName
+            df =  __addTechColumns__(df,containerName,directoryPath.replace("\\","/"),sourceFileName)
         
         return df
         
@@ -440,12 +434,3 @@ class DataLake(StorageAccountVirtualClass):
         file_client= directory_client.get_file_client(fileName)
         file_client.create_file()
         file_client.upload_data('')
-        
-    def create_container(self,containerName : str):
-        container_client = self.__service_client.get_file_system_client(file_system=containerName)
-        if not container_client.exists():
-            self.__service_client.create_file_system(containerName)       
-
-        
-    def delete_container(self,containerName : str):
-        self.__service_client.delete_file_system(containerName)

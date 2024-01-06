@@ -2,6 +2,7 @@
 
 
 from ..StorageAccountVirtualClass import *
+from ..StorageAccountVirtualClass import __addTechColumns__
 from azure.storage.blob import BlobServiceClient , ContentSettings  #, BlobClient, ContainerClient
 
 from azure.identity import DefaultAzureCredential
@@ -107,10 +108,8 @@ class Blob(StorageAccountVirtualClass):
         elif engine=='polars':
             df = self.read_csv_bytes(download_bytes,engine,sourceEncoding,columnDelimiter,isFirstRowAsHeader,skipRows,skipBlankLines)
         if addStrTechCol:
-            df['techContainer'] = containerName
             path = path.replace("\\","/")
-            df['techFolderPath'] = path[0:path.rfind("/")]
-            df['techSourceFile'] = path[path.rfind("/")+1:len(path)]
+            df =  __addTechColumns__(df,containerName,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
         return df
     
     def read_csv_folder(self,containerName:str,directoryPath:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',includeSubfolders:list=None,sourceEncoding :StorageAccountVirtualClass._ENCODING_TYPES= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines=True,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
@@ -163,11 +162,9 @@ class Blob(StorageAccountVirtualClass):
         for sheet in workbook_sheetnames:
             dff = pd.read_excel(workbook, sheet_name = sheet,skiprows=skipRows, index_col = None, header = isFirstRowAsHeader)
             if addStrTechCol:
-                dff['techContainer'] = containerName
                 path = path.replace("\\","/")
-                dff['techFolderPath'] = path[0:path.rfind("/")]
-                dff['techSourceFile'] = path[path.rfind("/")+1:len(path)]
-            
+                df =  __addTechColumns__(df,containerName,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
+
             list_of_dff.append(DataFromExcel(dff,sheet))
             
         return list_of_dff
@@ -400,10 +397,9 @@ class Blob(StorageAccountVirtualClass):
         df = self.read_parquet_bytes(bytes=download_bytes,columns=columns)
         
         if addStrTechCol:
-            df['techContainer'] = containerName
             path = path.replace("\\","/")
-            df['techFolderPath'] = path[0:path.rfind("/")]
-            df['techSourceFile'] = path[path.rfind("/")+1:len(path)]
+            df =  __addTechColumns__(df,containerName,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
+
         return df
     
     def read_parquet_folder(self,containerName:str,mainDirectoryPath:str,includeSubfolders:list=None,columns:list = None,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
@@ -480,11 +476,3 @@ class Blob(StorageAccountVirtualClass):
         blob_client = container_client.get_blob_client(path)
         blob_client.upload_blob('')
         
-    def create_container(self,containerName : str):
-        container_client = self.__service_client.get_container_client(container=containerName)   
-        if not container_client.exists():
-            self.__service_client.create_container(name=containerName)
-        
-        
-    def delete_container(self,containerName : str):
-        self.__service_client.delete_container(name=containerName)
