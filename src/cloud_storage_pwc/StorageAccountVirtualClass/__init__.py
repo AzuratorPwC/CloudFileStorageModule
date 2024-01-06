@@ -69,10 +69,12 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 callable(subclass.save_json_file)
                 
                 or  NotImplemented)
-    _ENGINE_TYPES = Literal['pandas', 'polars']  
+        
+    _ENGINE_TYPES = Literal['pandas', 'polars']
+    _ENCODING_TYPES = Literal['UTF-8', 'UTF-16']
         
     @classmethod
-    def read_csv_bytes(self,bytes:bytes,engine:('pandas','polars') ='pandas',sourceEncoding :str= "UTF-8", columnDelimiter :str= ";",isFirstRowAsHeader :bool= False,skipRows:int=0, skipBlankLines = True) ->pd.DataFrame:
+    def read_csv_bytes(self,bytes:bytes,engine:_ENGINE_TYPES ='pandas',sourceEncoding :_ENCODING_TYPES= "UTF-8", columnDelimiter :str= ";",isFirstRowAsHeader :bool= False,skipRows:int=0, skipBlankLines = True) ->pd.DataFrame:
         if engine=='pandas':
             df = pd.read_csv(BytesIO(bytes),sep=columnDelimiter,quoting=3  ,engine="python",dtype='str',
                 header= 0 if isFirstRowAsHeader==True else None ,
@@ -84,7 +86,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         return df
 
     @classmethod
-    def read_parquet_bytes(self,bytes:bytes,engine:('pandas','polars') ='pandas',columns:list=None) ->pd.DataFrame:
+    def read_parquet_bytes(self,bytes:bytes,engine:_ENGINE_TYPES ='pandas',columns:list=None) ->pd.DataFrame:
         if engine =='pandas':
             df = pd.read_parquet(BytesIO(bytes),'auto',columns)
         elif engine =='polars':
@@ -100,27 +102,27 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
     
     
     @abc.abstractmethod
-    def save_binary_file(self, inputbytes:bytes,containerName : str,directoryPath : str,fileName:str,sourceEncoding:str = "UTF-8",isOverWrite :bool=True):
+    def save_binary_file(self):
         """info"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def read_binary_file(self,containerName : str,directoryPath : str,fileName:str):
+    def read_binary_file(self):
         """info"""
         raise NotImplementedError
 
     @abc.abstractmethod
-    def read_csv_file(self,containerName:str,directoryPath:str,sourceFileName:str,engine:('pandas','polars') ='pandas',sourceEncoding:str = "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines = True,addStrTechCol:bool=False):
+    def read_csv_file(self):
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def read_csv_folder(self,containerName:str,directoryPath:str,engine:('pandas','polars') ='pandas',includeSubfolders:list=None,sourceEncoding :str= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines=True,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
+    def read_csv_folder(self) ->pd.DataFrame:
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def read_excel_file(self,containerName:str,directoryPath:str,sourceFileName:str,engine:('pandas','polars') ='pandas',skipRows:int = 0,isFirstRowAsHeader:bool = False,sheets:list()=None,addStrTechCol:bool=False):
+    def read_excel_file(self):
         """infor"""
         raise NotImplementedError
     
@@ -131,76 +133,76 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def save_dataframe_as_parquet(self,df:pd.DataFrame,containerName : str,directoryPath:str,partitionCols:list=None,compression:str=None):
+    def save_dataframe_as_parquet(self):
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def save_dataframe_as_parqarrow(self,df:pd.DataFrame,containerName : str,directoryPath:str,partitionCols:list=None,compression:str='NONE'):
+    def save_dataframe_as_parqarrow(self):
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def save_listdataframe_as_xlsx(self,list_df:list, list_sheetnames:list, containerName : str,directoryPath:str ,fileName:str):
+    def save_listdataframe_as_xlsx(self):
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def read_parquet_file(self, containerName: str, directoryPath: str,sourceFileName:str, columns: list = None,addStrTechCol:bool=False)->pd.DataFrame:
+    def read_parquet_file(self)->pd.DataFrame:
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def read_parquet_folder(self,containerName:str,directoryPath:str,includeSubfolders:list=None,columns:list = None,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
+    def read_parquet_folder(self) ->pd.DataFrame:
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def delete_file(self,containerName : str,directoryPath : str,fileName:str,wait:bool=True):
+    def delete_file(self):
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def delete_folder(self,containerName : str,directoryPath : str,wait:bool=True):
+    def delete_folder(self):
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def move_file(self,containerName : str,directoryPath : str,fileName:str,newContainerName : str,newDirectoryPath : str,newFileName:str,isOverWrite :bool=True,isDeleteSourceFile:bool=False):
+    def move_file(self):
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def move_folder(self,containerName : str,directoryPath : str,newContainerName : str,newDirectoryPath : str,isOverWrite :bool=True,isDeleteSourceFolder:bool=False)->bool:
+    def move_folder(self)->bool:
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def renema_file(self,containerName : str,directoryPath : str,fileName:str,newFileName:str):
+    def renema_file(self):
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def renema_folder(self,containerName : str,directoryPath : str,newDirectoryPath:str):
+    def renema_folder(self):
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def create_empty_file(self,containerName : str,directoryPath : str,fileName:str):
+    def create_empty_file(self):
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def create_container(self,containerName : str):
+    def create_container(self):
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def delete_container(self,containerName : str):
+    def delete_container(self):
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def save_json_file(self, df:[pd.DataFrame, pl.DataFrame], containerName: str, directory: str, file:str = None, engine:['polars', 'pandas'] = 'polars', orient: ['records', 'columns'] = 'records'):
+    def save_json_file(self):
         raise NotImplementedError
     
