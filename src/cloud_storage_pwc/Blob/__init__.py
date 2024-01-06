@@ -82,7 +82,7 @@ class Blob(StorageAccountVirtualClass):
         download_bytes = download.readall()
         return download_bytes
 
-    def save_binary_file(self, inputbytes:bytes,containerName : str,directoryPath : str,fileName:str,sourceEncoding:str = "UTF-8",isOverWrite :bool=True):
+    def save_binary_file(self, inputbytes:bytes,containerName : str,directoryPath : str,fileName:str,sourceEncoding:StorageAccountVirtualClass._ENCODING_TYPES = "UTF-8",isOverWrite :bool=True):
         container_client = self.__service_client.get_container_client(container=containerName)        
         
         if not directoryPath == '' and not directoryPath.endswith('/'):
@@ -113,7 +113,7 @@ class Blob(StorageAccountVirtualClass):
             df['techSourceFile'] = path[path.rfind("/")+1:len(path)]
         return df
     
-    def read_csv_folder(self,containerName:str,directoryPath:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',includeSubfolders:list=None,sourceEncoding :str= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines=True,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
+    def read_csv_folder(self,containerName:str,directoryPath:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',includeSubfolders:list=None,sourceEncoding :StorageAccountVirtualClass._ENCODING_TYPES= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines=True,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
         listFiles = self.ls_files(containerName,directoryPath, recursive=recursive)
         
         if  includeSubfolders:
@@ -173,7 +173,7 @@ class Blob(StorageAccountVirtualClass):
         return list_of_dff
     
     
-    def save_dataframe_as_csv(self,df:[pd.DataFrame, pl.DataFrame],containerName : str,directoryPath:str,file:str=None,partitionCols:list=None,sourceEncoding:str= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = True,quoteChar:str=' ',quoting:['never', 'always', 'necessary']='never',escapeChar:str="\\", engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars'):
+    def save_dataframe_as_csv(self,df:[pd.DataFrame, pl.DataFrame],containerName : str,directoryPath:str,file:str=None,partitionCols:list=None,sourceEncoding:StorageAccountVirtualClass._ENCODING_TYPES= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = True,quoteChar:str=' ',quoting:['never', 'always', 'necessary']='never',escapeChar:str="\\", engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars'):
         
         quoting_dict = {'never':csv.QUOTE_NONE, 'always':csv.QUOTE_ALL, 'necessary':csv.QUOTE_MINIMAL}
         

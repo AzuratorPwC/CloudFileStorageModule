@@ -55,7 +55,7 @@ class DataLake(StorageAccountVirtualClass):
 
     
 
-    def save_binary_file(self, inputbytes:bytes,containerName : str,directoryPath : str,fileName:str,sourceEncoding:str = "UTF-8",isOverWrite :bool=True):
+    def save_binary_file(self, inputbytes:bytes,containerName : str,directoryPath : str,fileName:str,sourceEncoding: StorageAccountVirtualClass._ENCODING_TYPES = "UTF-8",isOverWrite :bool=True):
         file_system_client = self.__service_client.get_file_system_client(file_system=containerName)        
         directory_client = file_system_client.get_directory_client(directoryPath)
         new_file_client = directory_client.create_file(fileName)
@@ -71,7 +71,7 @@ class DataLake(StorageAccountVirtualClass):
         return download_bytes
 
     
-    def read_csv_file(self,containerName:str,directoryPath:str,sourceFileName:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',sourceEncoding:str = "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines = True,addStrTechCol:bool=False):
+    def read_csv_file(self,containerName:str,directoryPath:str,sourceFileName:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',sourceEncoding:StorageAccountVirtualClass._ENCODING_TYPES = "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines = True,addStrTechCol:bool=False):
         file_system_client = self.__service_client.get_file_system_client(file_system=containerName) 
         directory_client = file_system_client.get_directory_client(directoryPath)
         file_client = directory_client.get_file_client(sourceFileName)
@@ -86,7 +86,7 @@ class DataLake(StorageAccountVirtualClass):
         
         return df
     
-    def read_csv_folder(self,containerName:str,directoryPath:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',includeSubfolders:list=None,sourceEncoding :str= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines=True,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
+    def read_csv_folder(self,containerName:str,directoryPath:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',includeSubfolders:list=None,sourceEncoding :StorageAccountVirtualClass._ENCODING_TYPES= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines=True,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
         file_system_client = self.__service_client.get_file_system_client(file_system=containerName) 
         listFiles = file_system_client.get_paths(directoryPath,recursive)
         df = pd.DataFrame()
@@ -147,7 +147,7 @@ class DataLake(StorageAccountVirtualClass):
         new_client_parq.upload_data(buf.getvalue(),overwrite=True)
     
 
-    def save_dataframe_as_csv(self,df:[pd.DataFrame, pl.DataFrame],containerName : str,directoryPath:str,file:str=None,partitionCols:list=None,sourceEncoding:str= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = True,quoteChar:str=' ',quoting:['never', 'always', 'necessary']='never',escapeChar:str="\\", engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars'):
+    def save_dataframe_as_csv(self,df:[pd.DataFrame, pl.DataFrame],containerName : str,directoryPath:str,file:str=None,partitionCols:list=None,sourceEncoding:StorageAccountVirtualClass._ENCODING_TYPES= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = True,quoteChar:str=' ',quoting:['never', 'always', 'necessary']='never',escapeChar:str="\\", engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars'):
         
         quoting_dict = {'never':csv.QUOTE_NONE, 'always':csv.QUOTE_ALL, 'necessary':csv.QUOTE_MINIMAL}
         
