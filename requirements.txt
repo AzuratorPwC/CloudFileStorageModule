@@ -5,3 +5,5 @@ azure-storage-blob
 pyarrow==10.0.0
 xlsxwriter==3.0.3
 ipykernel
+polars
+openpyxl
