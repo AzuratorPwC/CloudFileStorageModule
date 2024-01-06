@@ -38,7 +38,10 @@ class DataLake(StorageAccountVirtualClass):
                 )
                 self.__service_client = DataLakeServiceClient(account_url=url, credential=token_credential)
         except Exception as e:
-            raise Exception(f"Blad logowania na {url}: {str(e)}")
+            if "getaddrinfo failed" in str(e):
+                raise Exception(f"Warning: Storage account not found.")
+            else:
+                raise Exception(f"Blad logowania na {url}: {str(e)}")
         
         
         #print(self.__service_client.)
@@ -378,8 +381,10 @@ class DataLake(StorageAccountVirtualClass):
         file_client.upload_data('')
         
     def create_container(self,containerName : str):
-        container_client = self.__service_client.create_file_system(containerName)
-        
+        container_client = self.__service_client.get_file_system_client(file_system=containerName)
+        if not container_client.exists():
+            self.__service_client.create_file_system(containerName)       
+
         
     def delete_container(self,containerName : str):
         self.__service_client.delete_file_system(containerName)

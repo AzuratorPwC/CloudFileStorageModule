@@ -37,7 +37,10 @@ class Blob(StorageAccountVirtualClass):
                 )
                 self.__service_client = BlobServiceClient(account_url=url, credential=token_credential)
         except Exception as e:
-            raise Exception(f"Blad logowania do {url} : {str(e)}")
+            if "getaddrinfo failed" in str(e):
+                raise Exception(f"Warning: Storage account not found.")
+            else:
+                raise Exception(f"Blad logowania na {url}: {str(e)}")
         
         #if self.__service_client.get_account_information()['is_hns_enabled'] =='True':
         #    raise Exception(f"storage {url} nie jest blob")
@@ -435,7 +438,9 @@ class Blob(StorageAccountVirtualClass):
         blob_client.upload_blob('')
         
     def create_container(self,containerName : str):
-        container_client = self.__service_client.create_container(name=containerName)
+        container_client = self.__service_client.get_container_client(container=containerName)   
+        if not container_client.exists():
+            self.__service_client.create_container(name=containerName)
         
         
     def delete_container(self,containerName : str):
