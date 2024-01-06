@@ -171,44 +171,85 @@ class Blob(StorageAccountVirtualClass):
             
         return list_of_dff
     
-    def save_dataframe_as_csv(self,df:pd.DataFrame,containerName : str,directoryPath:str,file:str=None,partitionCols:list=None,sourceEncoding:str= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = True,quoteChar:str='',quoting:[csv.QUOTE_NONE,csv.QUOTE_ALL,csv.QUOTE_MINIMAL]=csv.QUOTE_NONE,escapeChar:str="\\"):
-        if not(df.empty):
-            df = df.replace('\n', ' ', regex=True)
+    def save_dataframe_as_csv(self,df:[pd.DataFrame, pl.DataFrame],containerName : str,directoryPath:str,file:str=None,partitionCols:list=None,sourceEncoding:str= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = True,quoteChar:str=' ',quoting:['never', 'always', 'necessary']='never',escapeChar:str="\\", engine:['pandas', 'polars'] = 'polars'):
+        
+        quoting_dict = {'never':csv.QUOTE_NONE, 'always':csv.QUOTE_ALL, 'necessary':csv.QUOTE_MINIMAL}
+        
+        if isinstance(df, pd.DataFrame):
+            if df.empty:
+                return
+            df = df.replace(r'\\n', '', regex=True) 
+            if engine != 'pandas':
+                df = pl.from_pandas(df)
+
+        elif isinstance(df, pl.DataFrame):
+            if df.is_empty():
+                return
+            df = df.with_columns(pl.col(pl.Utf8).str.replace_all(r"\\n", ""))
+            if engine != 'polars':
+                df = df.to_pandas(df)
+
+                        
         if partitionCols:
             partitionDict = {}
             for x in partitionCols:
                 partitionDict[x] = df[x].unique()
     
             partitionGroups = [dict(zip(partitionDict.keys(),items)) for items in product(*partitionDict.values())]
-            partitionGroups = [d for d in partitionGroups if np.nan not in d.values()   ]
+            partitionGroups = [d for d in partitionGroups if np.nan not in d.values()]
 
             for d in partitionGroups:
                 df_part = df
                 partitionPath=[]
                 
-                for d1 in d:
-                    df_part = df_part[df_part[d1] == d[d1]]
-                    partitionPath.append(f"{d1}={str(d[d1])}")
-        
-                if not(df_part.empty):
-                    buf = BytesIO()
-                    df_reset = df_part.reset_index(drop=True)
-                    df_reset.to_csv(buf,index=False, sep=columnDelimiter,encoding=sourceEncoding,header=isFirstRowAsHeader,quotechar=quoteChar, quoting=quoting,escapechar=escapeChar)
-                    buf.seek(0)
-                    self.save_binary_file(buf.getvalue(),containerName ,directoryPath +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.csv",True)
 
+                if isinstance(df_part, pd.DataFrame):
+                    for d1 in d:
+                        df_part = df_part[df_part[d1] == d[d1]]
+                        partitionPath.append(f"{d1}={str(d[d1])}")
+
+                if isinstance(df_part, pl.DataFrame):
+                    for d1 in d:
+                        df_part = df_part.filter(df_part[d1] == d[d1])
+                        partitionPath.append(f"{d1}={str(d[d1])}")
+
+                if isinstance(df_part, pd.DataFrame):
+                    if not(df_part.empty):
+                        buf = BytesIO()
+                        df_reset = df_part.reset_index(drop=True)
+                        df_reset.to_csv(buf,index=False, sep=columnDelimiter,encoding=sourceEncoding,header=isFirstRowAsHeader,quotechar=quoteChar, quoting=quoting_dict[quoting],escapechar=escapeChar)
+                        buf.seek(0)
+                        self.save_binary_file(buf.getvalue(),containerName ,directoryPath +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.csv",True)
+
+
+                if isinstance(df_part, pl.DataFrame):
+                    if not(df_part.is_empty()):
+                        buf = BytesIO()
+                        df_reset = df_part
+                        df_reset.write_csv(buf, separator=columnDelimiter, has_header=isFirstRowAsHeader, quote_char='"', quote_style=quoting)
+                        buf.seek(0)
+                        self.save_binary_file(buf.getvalue(),containerName ,directoryPath +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.csv",True)
+                                                
+        
         else:
-            if not(df.empty):
-                buf = BytesIO()
+            buf = BytesIO()
+            
+            if isinstance(df, pd.DataFrame):
                 df_reset = df.reset_index(drop=True)
-                df_reset.to_csv(buf,index=False, sep=columnDelimiter,encoding=sourceEncoding,header=isFirstRowAsHeader,quotechar=quoteChar, quoting=quoting,escapechar=escapeChar)
-                buf.seek(0)
-                if file:
-                    filename = file
-                else:
-                    filename = f"{uuid.uuid4().hex}.csv"
-                self.save_binary_file(buf.getvalue(),containerName ,directoryPath,filename,True)
-   
+                df_reset.to_csv(buf,index=False, sep=columnDelimiter,encoding=sourceEncoding,header=isFirstRowAsHeader,quotechar=quoteChar, quoting=quoting_dict[quoting],escapechar=escapeChar)
+            else:
+                df_reset = df
+                df_reset.write_csv(buf, separator=columnDelimiter, has_header=isFirstRowAsHeader, quote_style=quoting)
+    
+            buf.seek(0)
+
+            if file:
+                filename = file
+            else:
+                filename = f"{uuid.uuid4().hex}.csv"
+            self.save_binary_file(buf.getvalue(),containerName ,directoryPath,filename,True)
+
+
     
     def save_dataframe_as_parquet(self,df:pd.DataFrame,containerName : str,directoryPath:str,partitionCols:list=None,compression:str=None):
         
