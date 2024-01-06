@@ -339,9 +339,29 @@ class DataLake(StorageAccountVirtualClass):
                     time.sleep(5)
                     directory_client = file_system_client.get_directory_client(directoryPath)
                     checkIfExist=directory_client.exists()
+    
+    def file_exists(self, containerName : str,directoryPath : str,fileName:str):
+        file_system_client = self.__service_client.get_file_system_client(file_system=containerName)
+        
+        if directoryPath== "":
+            file_client= file_system_client.get_file_client(fileName)
+        else:
+            directory_client = file_system_client.get_directory_client(directoryPath)
+            if directory_client.exists():
+                file_client= directory_client.get_file_client(fileName)
+        return file_client.exists()
+            
+    def folder_exists(self, containerName : str, directoryPath : str):
+        if directoryPath== "":
+            return False       
+        file_system_client = self.__service_client.get_file_system_client(file_system=containerName)
+        directory_client = file_system_client.get_directory_client(directoryPath)
+        return directory_client.exists()
                     
     
     def move_file(self,containerName : str,directoryPath : str,fileName:str,newContainerName : str,newDirectoryPath : str,newFileName:str,isOverWrite :bool=True,isDeleteSourceFile:bool=False):
+        if not self.file_exists(containerName, directoryPath, fileName):
+            raise FileNotFoundError
         self.save_binary_file(self.read_binary_file(containerName,directoryPath,fileName),newContainerName,newDirectoryPath,newFileName,isOverWrite)
         if isDeleteSourceFile:
             self.delete_file(containerName ,directoryPath ,fileName)
@@ -362,16 +382,18 @@ class DataLake(StorageAccountVirtualClass):
         return files
     
     def move_folder(self,containerName : str,directoryPath : str,newContainerName : str,newDirectoryPath : str,isOverWrite :bool=True,isDeleteSourceFolder:bool=False)->bool:
+        if not self.folder_exists(containerName, directoryPath):
+            raise FileNotFoundError
         listFiles = self.ls_files(containerName,directoryPath,True)
         for i in listFiles:
             self.move_file(containerName,directoryPath,i,newContainerName,newDirectoryPath,i,isOverWrite,isDeleteSourceFolder)
         return True
         
     def renema_file(self,containerName : str,directoryPath : str,fileName:str,newFileName:str):
-        self.move_file(containerName,directoryPath,fileName,containerName,directoryPath,newFileName,True,True)
+        self.move_file(containerName,directoryPath,fileName,containerName,directoryPath,newFileName,False,True)
     
     def renema_folder(self,containerName : str,directoryPath : str,newDirectoryPath:str):
-        self.move_folder(containerName,directoryPath,containerName,newDirectoryPath,True,True)
+        self.move_folder(containerName,directoryPath,containerName,newDirectoryPath,False,True)
         
     def create_empty_file(self,containerName : str,directoryPath : str,fileName:str):
         file_system_client = self.__service_client.get_file_system_client(file_system=containerName)
