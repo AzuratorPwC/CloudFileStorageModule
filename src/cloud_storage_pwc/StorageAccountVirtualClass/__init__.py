@@ -4,6 +4,7 @@ import pandas as pd
 import polars as pl
 import csv
 from io import BytesIO
+from typing import Literal
 
     #, 'N/A'
 nanVal = ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN',
@@ -68,7 +69,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 callable(subclass.save_json_file)
                 
                 or  NotImplemented)
-        
+    _ENGINE_TYPES = Literal['pandas', 'polars']  
         
     @classmethod
     def read_csv_bytes(self,bytes:bytes,engine:('pandas','polars') ='pandas',sourceEncoding :str= "UTF-8", columnDelimiter :str= ";",isFirstRowAsHeader :bool= False,skipRows:int=0, skipBlankLines = True) ->pd.DataFrame:
@@ -123,8 +124,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         """infor"""
         raise NotImplementedError
     
+    
     @abc.abstractmethod
-    def save_dataframe_as_csv(self,df:pd.DataFrame,containerName : str,directoryPath:str,file:str=None,partitionCols:list=None,sourceEncoding:str= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = True,quoteChar:str='',quoting:(csv.QUOTE_NONE,csv.QUOTE_ALL,csv.QUOTE_MINIMAL)=csv.QUOTE_NONE,escapeChar:str="\\"):
+    def save_dataframe_as_csv(self):
         """infor"""
         raise NotImplementedError
     

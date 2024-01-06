@@ -17,7 +17,7 @@ import polars as pl
 import time
 from datetime import datetime
 import csv
-
+from typing import Literal
 
 
 class DataLake(StorageAccountVirtualClass):
@@ -146,8 +146,9 @@ class DataLake(StorageAccountVirtualClass):
         directory_client = file_system_client.get_directory_client(directoryPath)
         new_client_parq = directory_client.create_file(f"{uuid.uuid4().hex}.parquet")
         new_client_parq.upload_data(buf.getvalue(),overwrite=True)
-        
-    def save_dataframe_as_csv(self,df:[pd.DataFrame, pl.DataFrame],containerName : str,directoryPath:str,file:str=None,partitionCols:list=None,sourceEncoding:str= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = True,quoteChar:str=' ',quoting:['never', 'always', 'necessary']='never',escapeChar:str="\\", engine:['pandas', 'polars'] = 'polars'):
+    
+    _ENGINE_TYPES = Literal['pandas', 'polars']
+    def save_dataframe_as_csv(self,df:[pd.DataFrame, pl.DataFrame],containerName : str,directoryPath:str,file:str=None,partitionCols:list=None,sourceEncoding:str= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = True,quoteChar:str=' ',quoting:['never', 'always', 'necessary']='never',escapeChar:str="\\", engine: _ENGINE_TYPES ='polars'):
         
         quoting_dict = {'never':csv.QUOTE_NONE, 'always':csv.QUOTE_ALL, 'necessary':csv.QUOTE_MINIMAL}
         
