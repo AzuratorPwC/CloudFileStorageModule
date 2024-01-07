@@ -340,7 +340,7 @@ class Blob(StorageAccountVirtualClass):
                 #new_client_parq = container_client.get_blob_client(directoryPath +"/"+f"{uuid.uuid4().hex}.parquet")
                 #new_client_parq.upload_blob(buf.getvalue().to_pybytes(),overwrite=True)
 
-    def save_json_file(self, df: [pd.DataFrame, pl.DataFrame], containerName: str, directory: str, file:str = None, engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars', orient:['records', 'columns'] = 'records', test='x'):   
+    def save_json_file(self, df: [pd.DataFrame, pl.DataFrame], containerName: str, directory: str, file:str = None, engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars', orient:StorageAccountVirtualClass._ORIENT_TYPES= 'records'):   
 
         if isinstance(df, pd.DataFrame):
             if not(df.empty):

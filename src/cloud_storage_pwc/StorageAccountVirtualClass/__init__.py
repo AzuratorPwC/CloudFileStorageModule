@@ -73,6 +73,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         
     _ENGINE_TYPES = Literal['pandas', 'polars']
     _ENCODING_TYPES = Literal['UTF-8', 'UTF-16']
+    
+    
+    _ORIENT_TYPES = Literal['records', 'columns'] 
         
     @classmethod
     def read_csv_bytes(self,bytes:bytes,engine:_ENGINE_TYPES ='pandas',sourceEncoding :_ENCODING_TYPES= "UTF-8", columnDelimiter :str= ";",isFirstRowAsHeader :bool= False,skipRows:int=0, skipBlankLines = True) ->pd.DataFrame:
