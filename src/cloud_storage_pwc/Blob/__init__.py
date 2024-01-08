@@ -476,3 +476,9 @@ class Blob(StorageAccountVirtualClass):
         blob_client = container_client.get_blob_client(path)
         blob_client.upload_blob('')
         
+    def create_container(self,containerName : str,public_access:StorageAccountVirtualClass._CONTAINER_ACCESS_TYPES=None):
+        super().create_container(self.__service_client, containerName,public_access)
+        
+    
+    def delete_container(self,containerName : str):
+        super().delete_container(self.__service_client, containerName)

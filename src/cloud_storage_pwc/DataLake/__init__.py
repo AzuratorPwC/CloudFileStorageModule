@@ -50,8 +50,6 @@ class DataLake(StorageAccountVirtualClass):
         #    raise Exception(f"storage {url} nie jest datalake")
         
     def _check_is_blob(self):
-
-       
         return False
 
     
@@ -434,3 +432,9 @@ class DataLake(StorageAccountVirtualClass):
         file_client= directory_client.get_file_client(fileName)
         file_client.create_file()
         file_client.upload_data('')
+        
+    def create_container(self,containerName : str,public_access:StorageAccountVirtualClass._CONTAINER_ACCESS_TYPES=None):
+        super().create_container(self.__service_client, containerName,public_access)
+        
+    def delete_container(self,containerName : str):
+        super().delete_container(self.__service_client, containerName)

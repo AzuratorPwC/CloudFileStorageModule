@@ -76,6 +76,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
     
     
     _ORIENT_TYPES = Literal['records', 'columns'] 
+    _CONTAINER_ACCESS_TYPES = Literal['container', 'blob',None] 
         
     @classmethod
     def read_csv_bytes(self,bytes:bytes,engine:_ENGINE_TYPES ='pandas',sourceEncoding :_ENCODING_TYPES= "UTF-8", columnDelimiter :str= ";",isFirstRowAsHeader :bool= False,skipRows:int=0, skipBlankLines = True) ->pd.DataFrame:
@@ -97,14 +98,14 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             df = pl.read_parquet(BytesIO(bytes),columns=columns)
         return df
     @classmethod
-    def create_container(self,containerName : str):
-        container_client = self.__service_client.get_container_client(container=containerName)   
+    def create_container(self,service_client,containerName : str,public_access:_CONTAINER_ACCESS_TYPES=None):
+        container_client = service_client.get_container_client(container=containerName)   
         if not container_client.exists():
-            self.__service_client.create_container(name=containerName)
+            service_client.create_container(name=containerName,public_access=public_access)
         
     @classmethod
-    def delete_container(self,containerName : str):
-        self.__service_client.delete_container(name=containerName)    
+    def delete_container(self,service_client,containerName : str):
+        service_client.delete_container(name=containerName) 
     
     @abc.abstractmethod
     def _check_is_blob(self):
@@ -199,16 +200,6 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
     
     @abc.abstractmethod
     def create_empty_file(self):
-        """infor"""
-        raise NotImplementedError
-    
-    @abc.abstractmethod
-    def create_container(self):
-        """infor"""
-        raise NotImplementedError
-    
-    @abc.abstractmethod
-    def delete_container(self):
         """infor"""
         raise NotImplementedError
     
