@@ -11,7 +11,7 @@ on:
 
 jobs:
   hello:
-    runs-on: ubuntu-lates
+    runs-on: ubuntu-latest
     steps:
       - uses: action/checkout@v2
       - name: hello world
@@ -19,7 +19,7 @@ jobs:
         shell: bash
 
   goodbye:
-    runs-on: ubuntu-lates
+    runs-on: ubuntu-latest
     steps:
       - name: goodbye world
         run: echo "Nara"
