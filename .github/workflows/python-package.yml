@@ -45,7 +45,7 @@ jobs:
     - name: Build wheels
       run: python -m cibuildwheel --output-dir wheelhouse
       env:
-        CIBW_PLATFORM: ubuntu-latest
+        CIBW_PLATFORM: linux
       
     - uses: actions/upload-artifact@v4
       with:
