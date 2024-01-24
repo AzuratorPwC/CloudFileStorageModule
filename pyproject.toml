@@ -1,8 +1,19 @@
 [build-system]
-requires = ["setuptools>=40.6.0", "wheel"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+[project]
+name = "cloud_storage_pwc"
+version = "1"
+authors = [
+  { name="artur starosta", email="artur.starosta@pwc.com" },
+]
+description = "library to work with azure storageaccount"
 
-# Not necessary for packaging but every self-respecting Python
-# package should a) use black and b) fix the WRONG default.
-[tool.black]
-line-length = 79
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = []
