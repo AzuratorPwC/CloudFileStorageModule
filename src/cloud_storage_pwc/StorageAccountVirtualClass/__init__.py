@@ -5,21 +5,7 @@ import polars as pl
 import csv
 from io import BytesIO
 from typing import Literal
-
-    #, 'N/A'
-nanVal = ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN',
-                           '<NA>', 'NA', 'NULL', 'NaN', 'n/a', 'nan', 'null']
-
-class DataFromExcel:
-    def __init__(self,df,sheetName):
-        self.data = df
-        self.sheet = sheetName
-
-def __addTechColumns__(df:[pd.DataFrame, pl.DataFrame],containerName: str=None,directoryPath:str=None,file:str = None):
-    df['techContainer'] = containerName
-    df['techFolderPath'] = directoryPath
-    df['techSourceFile'] = file
-    return df
+from Utils import Utils
 
 
 class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
@@ -84,10 +70,11 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             df = pd.read_csv(BytesIO(bytes),sep=columnDelimiter,quoting=3  ,engine="python",dtype='str',
                 header= 0 if isFirstRowAsHeader==True else None ,
                 encoding=sourceEncoding,skiprows=skipRows,keep_default_na=False,
-                na_values=nanVal,skip_blank_lines=skipBlankLines)
+                na_values=Utils.nanVal,skip_blank_lines=skipBlankLines)
+            
         elif engine =='polars':
             df = pl.read_csv(BytesIO(bytes),separator=columnDelimiter,has_header=isFirstRowAsHeader,encoding=sourceEncoding,
-                        skip_rows=skipRows,null_values=nanVal,infer_schema_length=0)
+                        skip_rows=skipRows,null_values=Utils.nanVal,infer_schema_length=0)
         return df
 
     @classmethod

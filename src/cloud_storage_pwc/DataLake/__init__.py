@@ -43,11 +43,7 @@ class DataLake(StorageAccountVirtualClass):
             else:
                 raise Exception(f"Blad logowania na {url}: {str(e)}")
         
-        
-        #print(self.__service_client.)
-        
-        #if bool(self.__service_client.get_account_information()['is_hns_enabled']) =='False':
-        #    raise Exception(f"storage {url} nie jest datalake")
+
         
     def _check_is_blob(self):
         return False

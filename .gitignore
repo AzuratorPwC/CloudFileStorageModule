@@ -9,7 +9,9 @@ docs/source/generated/*
 **/*.tar.gz
 # Azure Functions localsettings file
 local.settings.json
-
+**/__pycache__
+**/__azurite*
+__azurite*
 # User-specific files
 *.suo
 *.user

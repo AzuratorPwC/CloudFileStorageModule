@@ -1,10 +1,5 @@
-
-
-
-from ..StorageAccountVirtualClass import *
-from ..StorageAccountVirtualClass import __addTechColumns__
-from azure.storage.blob import BlobServiceClient , ContentSettings  #, BlobClient, ContainerClient
-
+from ..StorageAccountVirtualClass import StorageAccountVirtualClass
+from azure.storage.blob import BlobServiceClient
 from azure.identity import DefaultAzureCredential
 from azure.identity import ClientSecretCredential
 import pyarrow as pa
@@ -15,37 +10,30 @@ from io import BytesIO
 import numpy as np 
 import pandas as pd
 import polars as pl
-from openpyxl import Workbook
 from itertools import product
 import time
 import csv
+from Utils import Utils
 
 
 class Blob(StorageAccountVirtualClass):
  
-    def __init__(self, url:str,accessKey:str=None,tenantId:str=None,applicationId:str=None,applicationSecret:str=None):
+    def __init__(self, url:str,accessKey:str = None,tenantId:str = None,applicationId:str = None,applicationSecret:str = None):
         super().__init__()
         try:
-            if accessKey is not None and tenantId is None and applicationId is None and applicationSecret is None: 
+            if accessKey is not None and tenantId is None and applicationId is None and applicationSecret is None:
                 self.__service_client = BlobServiceClient(account_url=url, credential=accessKey)
-            elif accessKey is  None and tenantId is None and applicationId is None and applicationSecret is None: 
+            elif accessKey is  None and tenantId is None and applicationId is None and applicationSecret is None:
                 credential = DefaultAzureCredential()
                 self.__service_client = BlobServiceClient(account_url=url, credential=credential)
             elif accessKey is  None and tenantId is not None and applicationId is not None and applicationSecret is not None:
-                token_credential = ClientSecretCredential(
-                tenantId, #self.active_directory_tenant_id,
-                applicationId, #self.active_directory_application_id,
-                applicationSecret #self.active_directory_application_secret
-                )
+                token_credential = ClientSecretCredential(tenantId,applicationId,applicationSecret )
                 self.__service_client = BlobServiceClient(account_url=url, credential=token_credential)
         except Exception as e:
             if "getaddrinfo failed" in str(e):
                 raise Exception(f"Warning: Storage account not found.")
             else:
                 raise Exception(f"Blad logowania na {url}: {str(e)}")
-        
-        #if self.__service_client.get_account_information()['is_hns_enabled'] =='True':
-        #    raise Exception(f"storage {url} nie jest blob")
 
     
     def _check_is_blob(self):
@@ -109,7 +97,7 @@ class Blob(StorageAccountVirtualClass):
             df = self.read_csv_bytes(download_bytes,engine,sourceEncoding,columnDelimiter,isFirstRowAsHeader,skipRows,skipBlankLines)
         if addStrTechCol:
             path = path.replace("\\","/")
-            df =  __addTechColumns__(df,containerName,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
+            df = Utils.addTechColumns(df,containerName,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
         return df
     
     def read_csv_folder(self,containerName:str,directoryPath:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',includeSubfolders:list=None,sourceEncoding :StorageAccountVirtualClass._ENCODING_TYPES= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines=True,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
@@ -163,9 +151,9 @@ class Blob(StorageAccountVirtualClass):
             dff = pd.read_excel(workbook, sheet_name = sheet,skiprows=skipRows, index_col = None, header = isFirstRowAsHeader)
             if addStrTechCol:
                 path = path.replace("\\","/")
-                df =  __addTechColumns__(df,containerName,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
-
-            list_of_dff.append(DataFromExcel(dff,sheet))
+                df =  Utils.addTechColumns(df,containerName,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
+            
+            list_of_dff.append(Utils.DataFromExcel(dff,sheet))
             
         return list_of_dff
     
@@ -398,7 +386,7 @@ class Blob(StorageAccountVirtualClass):
         
         if addStrTechCol:
             path = path.replace("\\","/")
-            df =  __addTechColumns__(df,containerName,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
+            df =  Utils.addTechColumns(df,containerName,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
 
         return df
     
