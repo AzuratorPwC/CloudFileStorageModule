@@ -33,7 +33,19 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
+        python -m pip install sphinx sphinx_rtd_theme myst_parser
+        python -m pip install build twine
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - name: Sphinx build
+      run: |
+          sphinx-build doc _build
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        publish_branch: main
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: _build/
+        force_orphan: true
    # - name: Lint with flake8
    #   run: |
    #     # stop the build if there are Python syntax errors or undefined names
@@ -43,41 +55,39 @@ jobs:
     #- name: Test with pytest
     #  run: |
     #    pytest
-    - name: Install cibuildwheel
-      run: | 
-          python -m pip install build twine
+          
         
       
-    - name: Build wheels
-      run: python -m build
+   # - name: Build wheels
+   #   run: python -m build
       
-    - uses: actions/upload-artifact@v4
-      with:
-        path: ./dist/*.whl
+   # - uses: actions/upload-artifact@v4
+   #   with:
+   #     path: ./dist/*.whl
 
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+   # - name: Azure Login
+   #   uses: azure/login@v1
+   #   with:
+   #     creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Setup Python package feed
-      run: |
-        access_token=$(az account get-access-token | jq .accessToken -r)
+   # - name: Setup Python package feed
+   #   run: |
+   #     access_token=$(az account get-access-token | jq .accessToken -r)
 
-        # setup pip auth
-        echo "PIP_INDEX_URL=https://:$access_token@pkgs.dev.azure.com/$azdo_org_name/_packaging/$azdo_artifacts_feed_name/pypi/simple/" >> $GITHUB_ENV
+    #    # setup pip auth
+    #    echo "PIP_INDEX_URL=https://:$access_token@pkgs.dev.azure.com/$azdo_org_name/_packaging/$azdo_artifacts_feed_name/pypi/simple/" >> $GITHUB_ENV
 
         # setup twine auth
-        cat > ~/.pypirc <<EOF
-        [distutils]
-        index-servers=$azdo_artifacts_feed_name
-        [$azdo_artifacts_feed_name]
-        repository=https://pkgs.dev.azure.com/$azdo_org_name/_packaging/$azdo_artifacts_feed_name/pypi/upload
-        username=build
-        password=$access_token
-        EOF
+    #    cat > ~/.pypirc <<EOF
+    #    [distutils]
+    #    index-servers=$azdo_artifacts_feed_name
+    #    [$azdo_artifacts_feed_name]
+    #    repository=https://pkgs.dev.azure.com/$azdo_org_name/_packaging/$azdo_artifacts_feed_name/pypi/upload
+    #    username=build
+    #    password=$access_token
+    #    EOF
 
-    - name: Publish Python package by twine
-      run: |
-        # need to install twine in advance
-        twine upload -r $azdo_artifacts_feed_name dist/*.whl
+   # - name: Publish Python package by twine
+   #   run: |
+   #     # need to install twine in advance
+   #     twine upload -r $azdo_artifacts_feed_name dist/*.whl
