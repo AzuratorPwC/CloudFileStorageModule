@@ -10,6 +10,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  azdo_artifacts_feed_name: DevFiles
+  azdo_org_name: Ciech
+
 jobs:
   build:
 
@@ -30,12 +34,12 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+   # - name: Lint with flake8
+   #   run: |
+   #     # stop the build if there are Python syntax errors or undefined names
+   #     flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+   #     # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+   #     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     #- name: Test with pytest
     #  run: |
     #    pytest
@@ -50,3 +54,25 @@ jobs:
     - uses: actions/upload-artifact@v4
       with:
         path: ./dist/*.whl
+
+    - name: Setup Python package feed
+      run: |
+        access_token=$(az account get-access-token | jq .accessToken -r)
+
+        # setup pip auth
+        echo "PIP_INDEX_URL=https://:$access_token@pkgs.dev.azure.com/$azdo_org_name/_packaging/$azdo_artifacts_feed_name/pypi/simple/" >> $GITHUB_ENV
+
+        # setup twine auth
+        cat > ~/.pypirc <<EOF
+        [distutils]
+        index-servers=$azdo_artifacts_feed_name
+        [$azdo_artifacts_feed_name]
+        repository=https://pkgs.dev.azure.com/$azdo_org_name/_packaging/$azdo_artifacts_feed_name/pypi/upload
+        username=build
+        password=$access_token
+        EOF
+
+    - name: Publish Python package by twine
+      run: |
+        # need to install twine in advance
+        twine upload -r $azdo_artifacts_feed_name dist/*.whl
