@@ -12,7 +12,7 @@ on:
 
 env:
   azdo_artifacts_feed_name: DevFiles
-  azdo_org_name: Ciech
+  azdo_org_name: Ciech/397c480e-cb0f-474e-b6d3-110a6180d540
 
 jobs:
   build:
