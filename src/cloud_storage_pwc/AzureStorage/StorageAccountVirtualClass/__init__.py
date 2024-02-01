@@ -5,7 +5,7 @@ import polars as pl
 import csv
 from io import BytesIO
 from typing import Literal
-from Utils import Utils
+from ..Utils import Utils
 
 
 class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
@@ -53,7 +53,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 hasattr(subclass, '_check_is_blob') and 
                 callable(subclass._check_is_blob) and
                 hasattr(subclass, 'save_json_file') and
-                callable(subclass.save_json_file)
+                callable(subclass.save_json_file) and
+                hasattr(subclass, 'ls_files') and
+                callable(subclass.ls_files)
                 
                 or  NotImplemented)
         
@@ -194,3 +196,6 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
     def save_json_file(self):
         raise NotImplementedError
     
+    @abc.abstractmethod
+    def ls_files(self):
+        raise NotImplementedError    

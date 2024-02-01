@@ -1,6 +1,6 @@
 
 from ..StorageAccountVirtualClass import *
-from ..StorageAccountVirtualClass import __addTechColumns__
+
 from azure.storage.filedatalake import DataLakeServiceClient, ContentSettings
 
 from azure.identity import DefaultAzureCredential
@@ -75,7 +75,7 @@ class DataLake(StorageAccountVirtualClass):
         df = self.read_csv_bytes(download_bytes,engine,sourceEncoding,columnDelimiter,isFirstRowAsHeader,skipRows,skipBlankLines)
         
         if addStrTechCol:
-            df =  __addTechColumns__(df,containerName,directoryPath.replace("\\","/"),sourceFileName)
+            df =  Utils.addTechColumns(df,containerName,directoryPath.replace("\\","/"),sourceFileName)
         return df
     
     def read_csv_folder(self,containerName:str,directoryPath:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',includeSubfolders:list=None,sourceEncoding :StorageAccountVirtualClass._ENCODING_TYPES= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines=True,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
@@ -111,9 +111,9 @@ class DataLake(StorageAccountVirtualClass):
         for sheet in workbook_sheetnames:
             dff = pd.read_excel(workbook, sheet_name = sheet,skiprows=skipRows, index_col = None, header = isFirstRowAsHeader)
             if addStrTechCol:
-                df =  __addTechColumns__(df,containerName,directoryPath.replace("\\","/"),sourceFileName)
+                df =  Utils.addTechColumns(df,containerName,directoryPath.replace("\\","/"),sourceFileName)
             
-            list_of_dff.append(DataFromExcel(dff,sheet))
+            list_of_dff.append(Utils.DataFromExcel(dff,sheet))
             
         return list_of_dff
     
@@ -295,7 +295,7 @@ class DataLake(StorageAccountVirtualClass):
         download_bytes = download.readall()
         df = self.read_parquet_bytes(bytes=download_bytes,columns=columns)
         if addStrTechCol:
-            df =  __addTechColumns__(df,containerName,directoryPath.replace("\\","/"),sourceFileName)
+            df =  Utils.addTechColumns(df,containerName,directoryPath.replace("\\","/"),sourceFileName)
         
         return df
         
@@ -394,9 +394,6 @@ class DataLake(StorageAccountVirtualClass):
             self.delete_file(containerName ,directoryPath ,fileName)
     
     def ls_files(self,containerName : str, directoryPath : str, recursive:bool=False)->list:
-        """
-        List files under a path, optionally recursively
-        """
         if directoryPath=="":
             directoryPath="/"
         files = []

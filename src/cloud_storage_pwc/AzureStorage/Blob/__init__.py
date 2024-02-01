@@ -1,3 +1,5 @@
+
+
 from ..StorageAccountVirtualClass import StorageAccountVirtualClass
 from azure.storage.blob import BlobServiceClient
 from azure.identity import DefaultAzureCredential
@@ -13,11 +15,11 @@ import polars as pl
 from itertools import product
 import time
 import csv
-from Utils import Utils
+from ..Utils import Utils
 
 
 class Blob(StorageAccountVirtualClass):
- 
+    
     def __init__(self, url:str,accessKey:str = None,tenantId:str = None,applicationId:str = None,applicationSecret:str = None):
         super().__init__()
         try:
@@ -58,19 +60,47 @@ class Blob(StorageAccountVirtualClass):
                 files.append(relative_path)
         return files
     
-    def read_binary_file(self,containerName : str,directoryPath : str,fileName:str)->bytes:
+    def read_binary_file(self, containerName: str, directoryPath: str, fileName: str) -> bytes:
+            """
+            Reads a binary file from the specified container, directory, and file name.
+
+            Args:
+                containerName (str): The name of the container.
+                directoryPath (str): The path to the directory where the file is located.
+                fileName (str): The name of the file.
+
+            Returns:
+                bytes: The content of the binary file.
+            """
+            if not directoryPath == '' and not directoryPath.endswith('/'):
+                directoryPath += '/'
+            container_client = self.__service_client.get_container_client(container=containerName)
+            path = directoryPath + fileName
+            blob_client = container_client.get_blob_client(path)
+            download = blob_client.download_blob()
+            download_bytes = download.readall()
+            return download_bytes
+
+    def save_binary_file(self, inputbytes: bytes, containerName: str, directoryPath: str, fileName: str, sourceEncoding: StorageAccountVirtualClass._ENCODING_TYPES = "UTF-8", isOverWrite: bool = True):
         """
-        dev1
+        Save a binary file to the specified container in the cloud storage.
+
+        Args:
+            inputbytes (bytes): The binary data to be saved.
+            containerName (str): The name of the container in the cloud storage.
+            directoryPath (str): The directory path within the container to save the file.
+            fileName (str): The name of the file to be saved.
+            sourceEncoding (StorageAccountVirtualClass._ENCODING_TYPES, optional): The encoding type of the input data. Defaults to "UTF-8".
+            isOverWrite (bool, optional): Flag indicating whether to overwrite the file if it already exists. Defaults to True.
         """
+        container_client = self.__service_client.get_container_client(container=containerName)
+
         if not directoryPath == '' and not directoryPath.endswith('/'):
             directoryPath += '/'
-        container_client = self.__service_client.get_container_client(container=containerName)
-        path = directoryPath + fileName
-        blob_client = container_client.get_blob_client(path)
-        download = blob_client.download_blob()
-        download_bytes = download.readall()
-        return download_bytes
 
+        new_blob_client = container_client.get_blob_client(directoryPath + fileName)
+        new_blob_client.upload_blob(bytes(inputbytes), overwrite=isOverWrite)
+    
     def save_binary_file(self, inputbytes:bytes,containerName : str,directoryPath : str,fileName:str,sourceEncoding:StorageAccountVirtualClass._ENCODING_TYPES = "UTF-8",isOverWrite :bool=True):
         container_client = self.__service_client.get_container_client(container=containerName)        
         
@@ -81,6 +111,39 @@ class Blob(StorageAccountVirtualClass):
         #content_settings = ContentSettings(content_encoding=sourceEncoding,content_type = "text/csv")
         new_blob_client.upload_blob(bytes(inputbytes),overwrite=isOverWrite)
         
+    def read_csv_file(self, containerName: str, directoryPath: str, sourceFileName: str, engine: StorageAccountVirtualClass._ENGINE_TYPES = 'polars', sourceEncoding: str = "UTF-8", columnDelimiter: str = ";", isFirstRowAsHeader: bool = False, skipRows: int = 0, skipBlankLines: bool = True, addStrTechCol: bool = False):
+        """
+        Reads a CSV file from the specified container, directory, and file path.
+
+        Args:
+            containerName (str): The name of the container where the file is located.
+            directoryPath (str): The path of the directory where the file is located.
+            sourceFileName (str): The name of the CSV file to read.
+            engine (StorageAccountVirtualClass._ENGINE_TYPES, optional): The engine to use for reading the CSV file. Defaults to 'polars'.
+            sourceEncoding (str, optional): The encoding of the CSV file. Defaults to "UTF-8".
+            columnDelimiter (str, optional): The delimiter used in the CSV file. Defaults to ";".
+            isFirstRowAsHeader (bool, optional): Whether the first row of the CSV file should be treated as the header. Defaults to False.
+            skipRows (int, optional): The number of rows to skip from the beginning of the CSV file. Defaults to 0.
+            skipBlankLines (bool, optional): Whether to skip blank lines in the CSV file. Defaults to True.
+            addStrTechCol (bool, optional): Whether to add technical columns to the resulting DataFrame. Defaults to False.
+
+        Returns:
+            DataFrame: The DataFrame containing the data from the CSV file.
+        """
+        if not directoryPath == '' and not directoryPath.endswith('/'):
+            path = directoryPath + "/" + sourceFileName
+        else:
+            path = directoryPath + sourceFileName
+
+        download_bytes = self.read_binary_file(containerName, directoryPath, sourceFileName)
+        if engine == 'pandas':
+            df = self.read_csv_bytes(download_bytes, engine, sourceEncoding, columnDelimiter, isFirstRowAsHeader, skipRows, skipBlankLines)
+        elif engine == 'polars':
+            df = self.read_csv_bytes(download_bytes, engine, sourceEncoding, columnDelimiter, isFirstRowAsHeader, skipRows, skipBlankLines)
+        if addStrTechCol:
+            path = path.replace("\\", "/")
+            df = Utils.addTechColumns(df, containerName, path[0:path.rfind("/")], path[path.rfind("/") + 1:len(path)])
+        return df
     def read_csv_file(self,containerName:str,directoryPath:str,sourceFileName:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',sourceEncoding:str = "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines = True,addStrTechCol:bool=False):
         
         if not directoryPath == '' and not directoryPath.endswith('/'):
@@ -464,8 +527,12 @@ class Blob(StorageAccountVirtualClass):
         blob_client = container_client.get_blob_client(path)
         blob_client.upload_blob('')
         
-    def create_container(self,containerName : str,public_access:StorageAccountVirtualClass._CONTAINER_ACCESS_TYPES=None):
-        super().create_container(self.__service_client, containerName,public_access)
+
+    def create_container(self, containerName: str, public_access: StorageAccountVirtualClass._CONTAINER_ACCESS_TYPES = None):
+        """
+        List files under a path, optionally recursively11111111
+        """
+        super().create_container(self.__service_client, containerName, public_access)
         
     
     def delete_container(self,containerName : str):
