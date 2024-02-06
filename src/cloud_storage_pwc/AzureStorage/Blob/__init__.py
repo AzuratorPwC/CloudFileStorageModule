@@ -1,12 +1,14 @@
-
-
-from ..StorageAccountVirtualClass import StorageAccountVirtualClass
+#from typing import override
+from multiprocessing import AuthenticationError
 from azure.storage.blob import BlobServiceClient
-from azure.identity import DefaultAzureCredential
 from azure.identity import ClientSecretCredential
+from azure.identity import DefaultAzureCredential
+from azure.core.exceptions import HttpResponseError,ResourceNotFoundError
+import csv
 import pyarrow as pa
 import pyarrow.parquet as pq
 import uuid
+from ..StorageAccountVirtualClass import StorageAccountVirtualClass
 import os
 from io import BytesIO
 import numpy as np 
@@ -14,214 +16,180 @@ import pandas as pd
 import polars as pl
 from itertools import product
 import time
-import csv
-from ..Utils import Utils
+
+from ..Utils import CONTAINER_ACCESS_TYPES,ENCODING_TYPES,ENGINE_TYPES,ORIENT_TYPES,DELIMITER_TYPES,QUOTING_TYPES,NAN_VALUES,add_tech_columns,DataFromExcel
+import logging
+
+
 
 
 class Blob(StorageAccountVirtualClass):
-    
-    def __init__(self, url:str,accessKey:str = None,tenantId:str = None,applicationId:str = None,applicationSecret:str = None):
+    """
+    Classs
+    """
+    def __init__(self, url:str,access_key:str = None,tenant_id:str = None,application_id:str = None,application_secret:str = None):
         super().__init__()
         try:
-            if accessKey is not None and tenantId is None and applicationId is None and applicationSecret is None:
-                self.__service_client = BlobServiceClient(account_url=url, credential=accessKey)
-            elif accessKey is  None and tenantId is None and applicationId is None and applicationSecret is None:
+            if access_key is not None and tenant_id is None and application_id is None and application_secret is None:
+                logging.info("Blob-create by accesskey %s",url)
+                self.__service_client = BlobServiceClient(account_url=url, credential=access_key)
+            elif access_key is  None and tenant_id is None and application_id is None and application_secret is None:
+                logging.info("Blob-create by defaultazurecredential %s",url)
                 credential = DefaultAzureCredential()
                 self.__service_client = BlobServiceClient(account_url=url, credential=credential)
-            elif accessKey is  None and tenantId is not None and applicationId is not None and applicationSecret is not None:
-                token_credential = ClientSecretCredential(tenantId,applicationId,applicationSecret )
+            elif access_key is  None and tenant_id is not None and application_id is not None and application_secret is not None:
+                logging.info("Blob-create by clientsecretcredential %s",url)
+                token_credential = ClientSecretCredential(tenant_id,application_id,application_secret )
                 self.__service_client = BlobServiceClient(account_url=url, credential=token_credential)
+            self.__service_client.get_service_properties()
+        except ResourceNotFoundError:
+            logging.error("Storage account %s not found",url)
+            raise ResourceNotFoundError("Storage account %s not found",url,exc_info=False)
+        except HttpResponseError:
+            logging.error("Storage account %s authorization error",url,exc_info=False)
+            raise AuthenticationError("Storage account %s authorization error",url,exc_info=False)
         except Exception as e:
-            if "getaddrinfo failed" in str(e):
-                raise Exception(f"Warning: Storage account not found.")
-            else:
-                raise Exception(f"Blad logowania na {url}: {str(e)}")
-
-    
-    def _check_is_blob(self):
-
+            logging.error(str(e))
+            
+            
+    def check_is_dfs(self)->bool:
+        """
+        Classs
+        """
         account_info= self.__service_client.get_account_information()
         return account_info['account_kind'] == 'StorageV2' and account_info['is_hns_enabled']
-            
 
-    def ls_files(self,containerName : str, directoryPath : str, recursive:bool=False)->list:
+    def ls_files(self,container_name : str, directory_path : str, recursive:bool=False)->list:
         """
         List files under a path, optionally recursively
         """
-        if not directoryPath == '' and not directoryPath.endswith('/'):
-            directoryPath += '/'
+        if not directory_path == '' and not directory_path.endswith('/'):
+            directory_path += '/'
 
-        container_client = self.__service_client.get_container_client(container=containerName) 
-        blob_iter = container_client.list_blobs(name_starts_with=directoryPath)
+        container_client = self.__service_client.get_container_client(container=container_name)
+        blob_iter = container_client.list_blobs(name_starts_with=directory_path)
         files = []
         for blob in blob_iter:
-            relative_path = os.path.relpath(blob.name, directoryPath)
+            relative_path = os.path.relpath(blob.name, directory_path)
             if recursive or not '\\' in relative_path:
                 files.append(relative_path)
         return files
+
+    def read_binary_file(self, container_name: str, directory_path: str, file_name: str) -> bytes:
+        """
+        Reads a binary file from the specified container, directory, and file name.
+
+        Args:
+            container_name (str): The name of the container.
+            directory_path (str): The path to the directory where the file is located.
+            file_name (str): The name of the file.
+
+        Returns:
+            bytes: The content of the binary file.
+        """
+        if not directory_path == '' and not directory_path.endswith('/'):
+            directory_path += '/'
+        container_client = self.__service_client.get_container_client(container=container_name)
+        path = directory_path + file_name
+        blob_client = container_client.get_blob_client(path)
+        download = blob_client.download_blob()
+        download_bytes = download.readall()
+        return  download_bytes
+
+
     
-    def read_binary_file(self, containerName: str, directoryPath: str, fileName: str) -> bytes:
-            """
-            Reads a binary file from the specified container, directory, and file name.
-
-            Args:
-                containerName (str): The name of the container.
-                directoryPath (str): The path to the directory where the file is located.
-                fileName (str): The name of the file.
-
-            Returns:
-                bytes: The content of the binary file.
-            """
-            if not directoryPath == '' and not directoryPath.endswith('/'):
-                directoryPath += '/'
-            container_client = self.__service_client.get_container_client(container=containerName)
-            path = directoryPath + fileName
-            blob_client = container_client.get_blob_client(path)
-            download = blob_client.download_blob()
-            download_bytes = download.readall()
-            return download_bytes
-
-    def save_binary_file(self, inputbytes: bytes, containerName: str, directoryPath: str, fileName: str, sourceEncoding: StorageAccountVirtualClass._ENCODING_TYPES = "UTF-8", isOverWrite: bool = True):
+    def save_binary_file(self, inputbytes:bytes,container_name : str,directory_path : str,file_name:str,source_encoding:ENCODING_TYPES = "UTF-8",is_overwrite :bool=True):
         """
         Save a binary file to the specified container in the cloud storage.
 
         Args:
             inputbytes (bytes): The binary data to be saved.
-            containerName (str): The name of the container in the cloud storage.
-            directoryPath (str): The directory path within the container to save the file.
-            fileName (str): The name of the file to be saved.
-            sourceEncoding (StorageAccountVirtualClass._ENCODING_TYPES, optional): The encoding type of the input data. Defaults to "UTF-8".
-            isOverWrite (bool, optional): Flag indicating whether to overwrite the file if it already exists. Defaults to True.
+            container_name (str): The name of the container in the cloud storage.
+            directory_path (str): The directory path within the container to save the file.
+            file_name (str): The name of the file to be saved.
+            source_encoding (ENCODING_TYPES, optional): The encoding type of the input data. Defaults to "UTF-8".
+            is_overwrite (bool, optional): Flag indicating whether to overwrite the file if it already exists. Defaults to True.
         """
-        container_client = self.__service_client.get_container_client(container=containerName)
+        container_client = self.__service_client.get_container_client(container=container_name)        
+        if not directory_path == '' and not directory_path.endswith('/'):
+            directory_path += '/'
+        new_blob_client = container_client.get_blob_client(directory_path +file_name)
+        #content_settings = ContentSettings(content_encoding=source_encoding,content_type = "text/csv")
+        new_blob_client.upload_blob(bytes(inputbytes),overwrite=is_overwrite)
 
-        if not directoryPath == '' and not directoryPath.endswith('/'):
-            directoryPath += '/'
-
-        new_blob_client = container_client.get_blob_client(directoryPath + fileName)
-        new_blob_client.upload_blob(bytes(inputbytes), overwrite=isOverWrite)
-    
-    def save_binary_file(self, inputbytes:bytes,containerName : str,directoryPath : str,fileName:str,sourceEncoding:StorageAccountVirtualClass._ENCODING_TYPES = "UTF-8",isOverWrite :bool=True):
-        container_client = self.__service_client.get_container_client(container=containerName)        
+    def read_csv_file(self,container_name:str,directory_path:str,sourcefile_name:str,engine:ENGINE_TYPES = 'polars',source_encoding:ENCODING_TYPES = "UTF-8", column_delimiter:DELIMITER_TYPES = ',',is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines = True,tech_columns:bool=False):
         
-        if not directoryPath == '' and not directoryPath.endswith('/'):
-            directoryPath += '/'
-            
-        new_blob_client = container_client.get_blob_client(directoryPath +fileName)
-        #content_settings = ContentSettings(content_encoding=sourceEncoding,content_type = "text/csv")
-        new_blob_client.upload_blob(bytes(inputbytes),overwrite=isOverWrite)
-        
-    def read_csv_file(self, containerName: str, directoryPath: str, sourceFileName: str, engine: StorageAccountVirtualClass._ENGINE_TYPES = 'polars', sourceEncoding: str = "UTF-8", columnDelimiter: str = ";", isFirstRowAsHeader: bool = False, skipRows: int = 0, skipBlankLines: bool = True, addStrTechCol: bool = False):
-        """
-        Reads a CSV file from the specified container, directory, and file path.
-
-        Args:
-            containerName (str): The name of the container where the file is located.
-            directoryPath (str): The path of the directory where the file is located.
-            sourceFileName (str): The name of the CSV file to read.
-            engine (StorageAccountVirtualClass._ENGINE_TYPES, optional): The engine to use for reading the CSV file. Defaults to 'polars'.
-            sourceEncoding (str, optional): The encoding of the CSV file. Defaults to "UTF-8".
-            columnDelimiter (str, optional): The delimiter used in the CSV file. Defaults to ";".
-            isFirstRowAsHeader (bool, optional): Whether the first row of the CSV file should be treated as the header. Defaults to False.
-            skipRows (int, optional): The number of rows to skip from the beginning of the CSV file. Defaults to 0.
-            skipBlankLines (bool, optional): Whether to skip blank lines in the CSV file. Defaults to True.
-            addStrTechCol (bool, optional): Whether to add technical columns to the resulting DataFrame. Defaults to False.
-
-        Returns:
-            DataFrame: The DataFrame containing the data from the CSV file.
-        """
-        if not directoryPath == '' and not directoryPath.endswith('/'):
-            path = directoryPath + "/" + sourceFileName
+        if not directory_path == '' and not directory_path.endswith('/'):
+            path = directory_path +"/"+sourcefile_name
         else:
-            path = directoryPath + sourceFileName
-
-        download_bytes = self.read_binary_file(containerName, directoryPath, sourceFileName)
-        if engine == 'pandas':
-            df = self.read_csv_bytes(download_bytes, engine, sourceEncoding, columnDelimiter, isFirstRowAsHeader, skipRows, skipBlankLines)
-        elif engine == 'polars':
-            df = self.read_csv_bytes(download_bytes, engine, sourceEncoding, columnDelimiter, isFirstRowAsHeader, skipRows, skipBlankLines)
-        if addStrTechCol:
-            path = path.replace("\\", "/")
-            df = Utils.addTechColumns(df, containerName, path[0:path.rfind("/")], path[path.rfind("/") + 1:len(path)])
-        return df
-    def read_csv_file(self,containerName:str,directoryPath:str,sourceFileName:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',sourceEncoding:str = "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines = True,addStrTechCol:bool=False):
+            path = directory_path + sourcefile_name
         
-        if not directoryPath == '' and not directoryPath.endswith('/'):
-            path = directoryPath +"/"+sourceFileName
-        else:
-            path = directoryPath + sourceFileName
-        
-        
-        download_bytes = self.read_binary_file(containerName,directoryPath,sourceFileName)
+        download_bytes = self.read_binary_file(container_name,directory_path,sourcefile_name)
         if engine=='pandas':
-            df = self.read_csv_bytes(download_bytes,engine,sourceEncoding,columnDelimiter,isFirstRowAsHeader,skipRows,skipBlankLines)
-
+            df = self.read_csv_bytes(download_bytes,engine,source_encoding,column_delimiter,is_first_row_as_header,skip_rows,skip_blank_lines)
         elif engine=='polars':
-            df = self.read_csv_bytes(download_bytes,engine,sourceEncoding,columnDelimiter,isFirstRowAsHeader,skipRows,skipBlankLines)
-        if addStrTechCol:
+            df = self.read_csv_bytes(download_bytes,engine,source_encoding,column_delimiter,is_first_row_as_header,skip_rows,skip_blank_lines)
+        if tech_columns:
             path = path.replace("\\","/")
-            df = Utils.addTechColumns(df,containerName,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
+            df = add_tech_columns(df,container_name,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
         return df
     
-    def read_csv_folder(self,containerName:str,directoryPath:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',includeSubfolders:list=None,sourceEncoding :StorageAccountVirtualClass._ENCODING_TYPES= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines=True,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
-        listFiles = self.ls_files(containerName,directoryPath, recursive=recursive)
-        
-        if  includeSubfolders:
-            newList=[]
-            for i in includeSubfolders:
-                for j in listFiles:
-                    if  j.startswith(i.replace("/","\\")):
-                        newList.append(j)
-                listFiles = list(set(listFiles) - set(newList))
-            listFiles = newList
-        
+    def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',source_encoding:ENCODING_TYPES = "UTF-8", column_delimiter:DELIMITER_TYPES = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,tech_columns:bool=False,recursive:bool=False) ->pd.DataFrame:
+        list_files = self.ls_files(container_name,directory_path, recursive=recursive)
+        #if  folders:
+        #    new_list=[]
+        #    for i in folders:
+        #        for j in list_files:
+        #            if  j.startswith(i.replace("/","\\")):
+        #                new_list.append(j)
+        #        list_files = list(set(list_files) - set(new_list))
+        #    list_files = new_list
         df = pd.DataFrame()
-        if listFiles:
-            for f in listFiles:
+        if list_files:
+            for f in list_files:
                 if engine=='pandas':
-                    dfNew = self.read_csv_file(containerName,directoryPath,f,engine,sourceEncoding,columnDelimiter,isFirstRowAsHeader,skipRows,skipBlankLines,addStrTechCol)
-                    df = pd.concat([df, dfNew], axis=0, join="outer", ignore_index=True)
+                    df_new = self.read_csv_file(container_name,directory_path,f,engine,source_encoding,column_delimiter,is_first_row_as_header,skip_rows,skip_blank_lines,tech_columns)
+                    df = pd.concat([df, df_new], axis=0, join="outer", ignore_index=True)
                 elif engine =='polars':
-                    dfNew = self.read_csv_file(containerName,directoryPath,f,engine,sourceEncoding,columnDelimiter,isFirstRowAsHeader,skipRows,skipBlankLines,addStrTechCol)
-                    df = pl.concat([df, dfNew])
-                    
+                    df_new = self.read_csv_file(container_name,directory_path,f,engine,source_encoding,column_delimiter,is_first_row_as_header,skip_rows,skip_blank_lines,tech_columns)
+                    df = pl.concat([df, df_new])             
         return df
-    def read_excel_file(self,containerName:str,directoryPath:str,sourceFileName:str,engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars',skipRows:int = 0,isFirstRowAsHeader:bool = False,sheets:list()=None,addStrTechCol:bool=False):
-        if not directoryPath == '' and not directoryPath.endswith('/'):
-            path = directoryPath +"/"+sourceFileName
+    def read_excel_file(self,container_name:str,directory_path:str,sourcefile_name:str,engine: ENGINE_TYPES ='polars',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets:list()=None,tech_columns:bool=False):
+        if not directory_path == '' and not directory_path.endswith('/'):
+            path = directory_path +"/"+sourcefile_name
         else:
-            path = directoryPath + sourceFileName
-        download_bytes = self.read_binary_file(containerName,directoryPath,sourceFileName)
-        if engine=='pandas':
-            if sourceFileName.endswith(".xls"):
+            path = directory_path + sourcefile_name
+        download_bytes = self.read_binary_file(container_name,directory_path,sourcefile_name)
+        if engine == 'pandas':
+            if sourcefile_name.endswith(".xls"):
                 workbook = pd.ExcelFile(BytesIO(download_bytes), engine='xlrd') 
             else:
                 workbook = pd.ExcelFile(BytesIO(download_bytes))
-        elif engine=='polars':
+        elif engine == 'polars':
             workbook = pl.read_excel(BytesIO(download_bytes), xlsx2csv_options={"skip_empty_lines": False},
-                            read_csv_options={"has_header": isFirstRowAsHeader,"skip_rows":skipRows})
+                            read_csv_options={"has_header": is_first_row_as_header,"skip_rows":skip_rows})
             
 
         workbook_sheetnames = workbook.sheet_names # get all sheet names
         if bool(sheets):
             workbook_sheetnames=list(set(workbook_sheetnames) & set(sheets))
         list_of_dff = []
-        if isFirstRowAsHeader:
-            isFirstRowAsHeader=0
+        if is_first_row_as_header:
+            is_first_row_as_header=0
         else:
-            isFirstRowAsHeader=None
+            is_first_row_as_header=None
         for sheet in workbook_sheetnames:
-            dff = pd.read_excel(workbook, sheet_name = sheet,skiprows=skipRows, index_col = None, header = isFirstRowAsHeader)
-            if addStrTechCol:
+            dff = pd.read_excel(workbook, sheet_name = sheet,skip_rows=skip_rows, index_col = None, header = is_first_row_as_header)
+            if tech_columns:
                 path = path.replace("\\","/")
-                df =  Utils.addTechColumns(df,containerName,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
+                df =  add_tech_columns(df,container_name,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
             
-            list_of_dff.append(Utils.DataFromExcel(dff,sheet))
+            list_of_dff.append(DataFromExcel(dff,sheet))
             
         return list_of_dff
     
     
-    def save_dataframe_as_csv(self,df:[pd.DataFrame, pl.DataFrame],containerName : str,directoryPath:str,file:str=None,partitionCols:list=None,sourceEncoding:StorageAccountVirtualClass._ENCODING_TYPES= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = True,quoteChar:str=' ',quoting:['never', 'always', 'necessary']='never',escapeChar:str="\\", engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars'):
+    def save_dataframe_as_csv(self,df:[pd.DataFrame, pl.DataFrame],container_name : str,directory_path:str,file:str=None,partition_columns:list=None,source_encoding:ENCODING_TYPES= "UTF-8", column_delimiter:str = ";",is_first_row_as_header:bool = True,quoteChar:str=' ',quoting:['never', 'always', 'necessary']='never',escapeChar:str="\\", engine: ENGINE_TYPES ='polars'):
         
         quoting_dict = {'never':csv.QUOTE_NONE, 'always':csv.QUOTE_ALL, 'necessary':csv.QUOTE_MINIMAL}
         
@@ -240,9 +208,9 @@ class Blob(StorageAccountVirtualClass):
                 df = df.to_pandas(df)
 
                         
-        if partitionCols:
+        if partition_columns:
             partitionDict = {}
-            for x in partitionCols:
+            for x in partition_columns:
                 partitionDict[x] = df[x].unique()
     
             partitionGroups = [dict(zip(partitionDict.keys(),items)) for items in product(*partitionDict.values())]
@@ -267,18 +235,18 @@ class Blob(StorageAccountVirtualClass):
                     if not(df_part.empty):
                         buf = BytesIO()
                         df_reset = df_part.reset_index(drop=True)
-                        df_reset.to_csv(buf,index=False, sep=columnDelimiter,encoding=sourceEncoding,header=isFirstRowAsHeader,quotechar=quoteChar, quoting=quoting_dict[quoting],escapechar=escapeChar)
+                        df_reset.to_csv(buf,index=False, sep=column_delimiter,encoding=source_encoding,header=is_first_row_as_header,quotechar=quoteChar, quoting=quoting_dict[quoting],escapechar=escapeChar)
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),containerName ,directoryPath +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.csv",True)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.csv",True)
 
 
                 if isinstance(df_part, pl.DataFrame):
                     if not(df_part.is_empty()):
                         buf = BytesIO()
                         df_reset = df_part
-                        df_reset.write_csv(buf, separator=columnDelimiter, has_header=isFirstRowAsHeader, quote_char='"', quote_style=quoting)
+                        df_reset.write_csv(buf, separator=column_delimiter, has_header=is_first_row_as_header, quote_char='"', quote_style=quoting)
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),containerName ,directoryPath +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.csv",True)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.csv",True)
                                                 
         
         else:
@@ -286,22 +254,22 @@ class Blob(StorageAccountVirtualClass):
             
             if isinstance(df, pd.DataFrame):
                 df_reset = df.reset_index(drop=True)
-                df_reset.to_csv(buf,index=False, sep=columnDelimiter,encoding=sourceEncoding,header=isFirstRowAsHeader,quotechar=quoteChar, quoting=quoting_dict[quoting],escapechar=escapeChar)
+                df_reset.to_csv(buf,index=False, sep=column_delimiter,encoding=source_encoding,header=is_first_row_as_header,quotechar=quoteChar, quoting=quoting_dict[quoting],escapechar=escapeChar)
             else:
                 df_reset = df
-                df_reset.write_csv(buf, separator=columnDelimiter, has_header=isFirstRowAsHeader, quote_style=quoting)
+                df_reset.write_csv(buf, separator=column_delimiter, has_header=is_first_row_as_header, quote_style=quoting)
     
             buf.seek(0)
 
             if file:
-                filename = file
+                file_name = file
             else:
-                filename = f"{uuid.uuid4().hex}.csv"
-            self.save_binary_file(buf.getvalue(),containerName ,directoryPath,filename,True)
+                file_name = f"{uuid.uuid4().hex}.csv"
+            self.save_binary_file(buf.getvalue(),container_name ,directory_path,file_name,True)
 
 
     
-    def save_dataframe_as_parquet(self,df:pd.DataFrame,containerName : str,directoryPath:str,partitionCols:list=None,compression:str=None):
+    def save_dataframe_as_parquet(self,df:pd.DataFrame,container_name : str,directory_path:str,partition_columns:list=None,compression:str=None):
         
         VALID_compression = {'snappy', 'gzip', 'brotli', None}
         if compression is not None:
@@ -310,9 +278,9 @@ class Blob(StorageAccountVirtualClass):
             raise ValueError("results: status must be one of %r." % VALID_compression)
         if not(df.empty):
             df = df.replace('\n', ' ', regex=True)  
-        if partitionCols:
+        if partition_columns:
             partitionDict = {}
-            for x in partitionCols:
+            for x in partition_columns:
                 partitionDict[x] = df[x].unique()
     
             partitionGroups = [dict(zip(partitionDict.keys(),items)) for items in product(*partitionDict.values())]
@@ -330,22 +298,22 @@ class Blob(StorageAccountVirtualClass):
                     buf = BytesIO()  
                     df_part.to_parquet(buf,allow_truncated_timestamps=True, use_deprecated_int96_timestamps=True,compression=compression)
                     buf.seek(0)
-                    self.save_binary_file(buf.getvalue(),containerName ,directoryPath +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.parquet",True)
+                    self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.parquet",True)
                     
-                    #new_client_parq = container_client.get_blob_client(directoryPath+"/" +"/".join(partitionPath)+"/" +f"{uuid.uuid4().hex}.parquet")
+                    #new_client_parq = container_client.get_blob_client(directory_path+"/" +"/".join(partitionPath)+"/" +f"{uuid.uuid4().hex}.parquet")
                     #new_client_parq.upload_blob(buf.getvalue(),overwrite=True)
         else:
             if not(df.empty):
                 buf = BytesIO()
                 df.to_parquet(buf,allow_truncated_timestamps=True, use_deprecated_int96_timestamps=True,compression=compression)
                 buf.seek(0)
-                self.save_binary_file(buf.getvalue(),containerName ,directoryPath,f"{uuid.uuid4().hex}.parquet",True)
+                self.save_binary_file(buf.getvalue(),container_name ,directory_path,f"{uuid.uuid4().hex}.parquet",True)
 
-                #new_client_parq = container_client.get_blob_client(directoryPath +"/"+f"{uuid.uuid4().hex}.parquet")
+                #new_client_parq = container_client.get_blob_client(directory_path +"/"+f"{uuid.uuid4().hex}.parquet")
                 #new_client_parq.upload_blob(buf.getvalue(),overwrite=True)
 
         
-    def save_dataframe_as_parqarrow(self,df:pd.DataFrame,containerName : str,directoryPath:str,partitionCols:list=None,compression:str=None):
+    def save_dataframe_as_parqarrow(self,df:pd.DataFrame,container_name : str,directory_path:str,partition_columns:list=None,compression:str=None):
             
         VALID_compression = {'NONE','SNAPPY', 'GZIP', 'BROTLI', 'LZ4', 'ZSTD'}
         if compression is not None:
@@ -357,9 +325,9 @@ class Blob(StorageAccountVirtualClass):
         if compression not in VALID_compression:
             raise ValueError("results: status must be one of %r." % VALID_compression)
         
-        if partitionCols:
+        if partition_columns:
             partitionDict = {}
-            for x in partitionCols:
+            for x in partition_columns:
                 partitionDict[x] = df[x].unique()
     
             partitionGroups = [dict(zip(partitionDict.keys(),items)) for items in product(*partitionDict.values())]
@@ -377,21 +345,21 @@ class Blob(StorageAccountVirtualClass):
                     table = pa.Table.from_pandas(df_part)
                     buf = pa.BufferOutputStream()
                     pq.write_table(table, buf,use_deprecated_int96_timestamps=True, allow_truncated_timestamps=True,compression=compression)
-                    self.save_binary_file(buf.getvalue().to_pybytes(),containerName ,directoryPath +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.parquet",True)
+                    self.save_binary_file(buf.getvalue().to_pybytes(),container_name ,directory_path +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.parquet",True)
 
-                    #new_client_parq = container_client.get_blob_client(directoryPath +"/" +"/".join(partitionPath)+"/"+f"{uuid.uuid4().hex}.parquet")
+                    #new_client_parq = container_client.get_blob_client(directory_path +"/" +"/".join(partitionPath)+"/"+f"{uuid.uuid4().hex}.parquet")
                     #new_client_parq.upload_blob(buf.getvalue().to_pybytes(),overwrite=True)
         else:
             if not(df.empty):
                 table = pa.Table.from_pandas(df)
                 buf = pa.BufferOutputStream()
                 pq.write_table(table, buf,use_deprecated_int96_timestamps=True, allow_truncated_timestamps=True,compression=compression)
-                self.save_binary_file(buf.getvalue().to_pybytes(),containerName ,directoryPath,f"{uuid.uuid4().hex}.parquet",True)
+                self.save_binary_file(buf.getvalue().to_pybytes(),container_name ,directory_path,f"{uuid.uuid4().hex}.parquet",True)
 
-                #new_client_parq = container_client.get_blob_client(directoryPath +"/"+f"{uuid.uuid4().hex}.parquet")
+                #new_client_parq = container_client.get_blob_client(directory_path +"/"+f"{uuid.uuid4().hex}.parquet")
                 #new_client_parq.upload_blob(buf.getvalue().to_pybytes(),overwrite=True)
 
-    def save_json_file(self, df: [pd.DataFrame, pl.DataFrame], containerName: str, directory: str, file:str = None, engine: StorageAccountVirtualClass._ENGINE_TYPES ='polars', orient:StorageAccountVirtualClass._ORIENT_TYPES= 'records'):   
+    def save_json_file(self, df: [pd.DataFrame, pl.DataFrame], container_name: str, directory: str, file:str = None, engine: ENGINE_TYPES ='polars', orient:ORIENT_TYPES= 'records'):
 
         if isinstance(df, pd.DataFrame):
             if not(df.empty):
@@ -422,118 +390,126 @@ class Blob(StorageAccountVirtualClass):
             raise Exception("DF argument is not Pandas or Polars DataFrame")
 
         if file:
-            filename = file
+            file_name = file
         else:
-            filename = f"{uuid.uuid4().hex}.json"
-        self.save_binary_file(buf.getvalue(), containerName ,directory,filename,True)
+            file_name = f"{uuid.uuid4().hex}.json"
+        self.save_binary_file(buf.getvalue(), container_name ,directory,file_name,True)
 
-    def save_listdataframe_as_xlsx(self,list_df:list, list_sheetnames:list, containerName : str,directoryPath:str ,fileName:str,index=False,header=False):
+    
+    def save_listdataframe_as_xlsx(self,list_df:list, sheets:list, container_name : str,directory_path:str ,file_name:str,index=False,header=False):
         # for multiple dfs
-        
         buf = BytesIO() 
         with pd.ExcelWriter(buf, engine = 'openpyxl') as writer:
-            for df, sheet_name in zip(list_df,list_sheetnames):
-                df.to_excel(writer, index = index, header = header, sheet_name = sheet_name)   
-        buf.seek(0) 
-        self.save_binary_file(buf.getvalue(),containerName ,directoryPath,f"{fileName}.xlsx",True)
+            for df, sheet_name in zip(list_df,sheets):
+                df.to_excel(writer, index = index, header = header, sheet_name = sheet_name)
+        buf.seek(0)
+        self.save_binary_file(buf.getvalue(),container_name ,directory_path,f"{file_name}.xlsx",True)
     
     
-    def read_parquet_file(self, containerName: str, directoryPath: str,sourceFileName:str, columns: list = None,addStrTechCol:bool=False)->pd.DataFrame:
+    def read_parquet_file(self, container_name: str, directory_path: str,sourcefile_name:str, columns: list = None,tech_columns:bool=False)->pd.DataFrame:
         
-        if not directoryPath == '' and not directoryPath.endswith('/'):
-            path = directoryPath +"/"+sourceFileName
+        if not directory_path == '' and not directory_path.endswith('/'):
+            path = directory_path +"/"+sourcefile_name
         else:
-            path = directoryPath + sourceFileName
-        download_bytes = self.read_binary_file(containerName,directoryPath,sourceFileName)
+            path = directory_path + sourcefile_name
+        download_bytes = self.read_binary_file(container_name,directory_path,sourcefile_name)
         df = self.read_parquet_bytes(bytes=download_bytes,columns=columns)
         
-        if addStrTechCol:
+        if tech_columns:
             path = path.replace("\\","/")
-            df =  Utils.addTechColumns(df,containerName,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
+            df =  add_tech_columns(df,container_name,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
 
         return df
     
-    def read_parquet_folder(self,containerName:str,mainDirectoryPath:str,includeSubfolders:list=None,columns:list = None,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
+    def read_parquet_folder(self,container_name:str,directory_path:str,folders:list=None,columns:list = None,tech_columns:bool=False,recursive:bool=False) ->pd.DataFrame:
         
-        listFiles = self.ls_files(containerName,mainDirectoryPath, recursive=recursive)
-        
-        if  includeSubfolders:
-            newList=[]
-            for i in includeSubfolders:
-                for j in listFiles:
+        list_files = self.ls_files(container_name,directory_path, recursive=recursive)
+        if  folders:
+            new_list=[]
+            for i in folders:
+                for j in list_files:
                     if  j.startswith(i.replace("/","\\")):
-                        newList.append(j)
-                listFiles = list(set(listFiles) - set(newList))
-            listFiles = newList
+                        new_list.append(j)
+                list_files = list(set(list_files) - set(new_list))
+            list_files = new_list
             
         df = pd.DataFrame()
-        if listFiles:
-            for f in listFiles:
-                dfNew = self.read_parquet_file(containerName,mainDirectoryPath,f,columns,addStrTechCol)
-                df = pd.concat([df, dfNew], axis=0, join="outer", ignore_index=True)
+        if list_files:
+            for f in list_files:
+                df_new = self.read_parquet_file(container_name,directory_path,f,columns,tech_columns)
+                df = pd.concat([df, df_new], axis=0, join="outer", ignore_index=True)
         return df
     
-    def delete_file(self,containerName : str,directoryPath : str,fileName:str,wait:bool=True):
-        container_client = self.__service_client.get_container_client(container=containerName)
-        if directoryPath =="" or directoryPath is None:
-            path=fileName
+    def delete_file(self,container_name : str,directory_path : str,file_name:str,wait:bool=True):
+        container_client = self.__service_client.get_container_client(container=container_name)
+        if directory_path =="" or directory_path is None:
+            path=file_name
         else:
-            path = "/".join( (directoryPath,fileName)) 
+            path = "/".join( (directory_path,file_name)) 
         blob_client = container_client.get_blob_client(path)
         blob_client.delete_blob(delete_snapshots="include")
         
         if wait:
             blob_client = container_client.get_blob_client(path)
-            checkIfExist = blob_client.exists()
-            while checkIfExist:
+            check_if_exist = blob_client.exists()
+            while check_if_exist:
                 time.sleep(5)
                 blob_client = container_client.get_blob_client(path)
-                checkIfExist = blob_client.exists()
+                check_if_exist = blob_client.exists()
         
-    def delete_folder(self,containerName : str,directoryPath : str,wait:bool=True):
-        listFiles = self.ls_files(containerName,directoryPath,True)
-        for f in listFiles:
-            path = directoryPath + "/" + f.replace("\\","/")
-            self.delete_file(containerName,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
+    def delete_folder(self,container_name : str,directory_path : str,wait:bool=True):
+        list_files = self.ls_files(container_name,directory_path,True)
+        for f in list_files:
+            path = directory_path + "/" + f.replace("\\","/")
+            self.delete_file(container_name,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
         
         if wait:
-            listFiles = self.ls_files(containerName,directoryPath,True)
-            while len(listFiles)>0:
+            list_files = self.ls_files(container_name,directory_path,True)
+            while len(list_files)>0:
                 time.sleep(5)
-                listFiles = self.ls_files(containerName,directoryPath,True)
+                list_files = self.ls_files(container_name,directory_path,True)
         
-    def move_file(self,containerName : str,directoryPath : str,fileName:str,newContainerName : str,newDirectoryPath : str,newFileName:str,isOverWrite :bool=True,isDeleteSourceFile:bool=False):
-        self.save_binary_file(self.read_binary_file(containerName,directoryPath,fileName),newContainerName,newDirectoryPath,newFileName,isOverWrite)
+    def move_file(self,container_name : str,directory_path : str,file_name:str,new_container_name : str,new_directory_path : str,newfile_name:str,is_overwrite :bool=True,isDeleteSourceFile:bool=False):
+        self.save_binary_file(self.read_binary_file(container_name,directory_path,file_name),new_container_name,new_directory_path,newfile_name,is_overwrite)
         if isDeleteSourceFile:
-            self.delete_file(containerName ,directoryPath ,fileName)
+            self.delete_file(container_name ,directory_path ,file_name)
             
-    def move_folder(self,containerName : str,directoryPath : str,newContainerName : str,newDirectoryPath : str,isOverWrite :bool=True,isDeleteSourceFolder:bool=False)->bool:
-        listFiles = self.ls_files(containerName,directoryPath,True)
-        for i in listFiles:
-            self.move_file(containerName,directoryPath,i,newContainerName,newDirectoryPath,i,True,isDeleteSourceFolder)
+    def move_folder(self,container_name : str,directory_path : str,new_container_name : str,new_directory_path : str,is_overwrite :bool=True,is_delete_source_folder:bool=False)->bool:
+        list_files = self.ls_files(container_name,directory_path,True)
+        for i in list_files:
+            self.move_file(container_name,directory_path,i,new_container_name,new_directory_path,i,True,is_delete_source_folder)
         return True
         
-    def renema_file(self,containerName : str,directoryPath : str,fileName:str,newFileName:str):
-        self.move_file(containerName,directoryPath,fileName,containerName,directoryPath,newFileName,True,True)
+    def renema_file(self,container_name : str,directory_path : str,file_name:str,newfile_name:str):
+        self.move_file(container_name,directory_path,file_name,container_name,directory_path,newfile_name,True,True)
     
-    def renema_folder(self,containerName : str,directoryPath : str,newDirectoryPath:str):
-        self.move_folder(containerName,directoryPath,containerName,newDirectoryPath,True,True)
+    def renema_folder(self,container_name : str,directory_path : str,new_directory_path:str):
+        self.move_folder(container_name,directory_path,container_name,new_directory_path,True,True)
         
-    def create_empty_file(self,containerName : str,directoryPath : str,fileName:str):
-        container_client = self.__service_client.get_container_client(container=containerName)
-        if directoryPath!='':
-            directoryPath=directoryPath+'/'
-        path = directoryPath +fileName
+    def create_empty_file(self,container_name : str,directory_path : str,file_name:str):
+        container_client = self.__service_client.get_container_client(container=container_name)
+        if directory_path!='':
+            directory_path=directory_path+'/'
+        path = directory_path +file_name
         blob_client = container_client.get_blob_client(path)
         blob_client.upload_blob('')
         
+    def create_container(self,container_name : str,public_access:CONTAINER_ACCESS_TYPES='Private'):
+        """
+        Creates a container in the Azure Blob Storage.
 
-    def create_container(self, containerName: str, public_access: StorageAccountVirtualClass._CONTAINER_ACCESS_TYPES = None):
+        Args:
+            container_name (str): The name of the container to create.
+            public_access (CONTAINER_ACCESS_TYPES, optional): The level of public access for the container. Defaults to None.
+
+        Returns:
+            None
         """
-        List files under a path, optionally recursively11111111
-        """
-        super().create_container(self.__service_client, containerName, public_access)
-        
-    
-    def delete_container(self,containerName : str):
-        super().delete_container(self.__service_client, containerName)
+        container_client = self.__service_client.get_container_client(container=container_name)   
+        if not container_client.exists():
+            self.__service_client.create_container(name=container_name,public_access=public_access)
+
+    def delete_container(self,container_name : str):
+        container_client = self.__service_client.get_container_client(container=container_name)
+        if not container_client.exists():
+            container_client.delete_container()

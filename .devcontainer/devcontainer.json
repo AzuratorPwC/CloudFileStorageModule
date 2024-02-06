@@ -12,7 +12,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "pip3 install --user -r requirements.txt",
+	"postCreateCommand": "pip install --user -r requirements.txt",
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -32,9 +32,14 @@
 				"GitHub.vscode-pull-request-github",
 				"mhutchie.git-graph",
 				"Azurite.azurite",
-				"ms-toolsai.jupyter@2023.7.1002162226"
+				"ms-toolsai.jupyter@2023.7.1002162226",
+				"ms-python.pylint",
+				"MS-vsliveshare.vsliveshare"
 			]
 		}
+	},
+	"features": {
+		"ghcr.io/rchaganti/vsc-devcontainer-features/azurebicep:1": {}
 	}
 	//"features": {}
 

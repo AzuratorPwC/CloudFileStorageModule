@@ -1,23 +1,36 @@
-
+from typing import Literal
 import pandas as pd
 import polars as pl
 
+ENGINE_TYPES = Literal['pandas', 'polars']
+DELIMITER_TYPES = Literal[';', '^','~',',','\t','|','◇','◆',' ']
+QUOTING_TYPES = Literal['QUOTE_MINIMAL', 'QUOTE_ALL','QUOTE_NONNUMERIC','QUOTE_NONE']
+ENCODING_TYPES = Literal['UTF-8', 'UTF-16']
+ORIENT_TYPES = Literal['records', 'columns']
+CONTAINER_ACCESS_TYPES = Literal['Container', 'Blob','Private']
+NAN_VALUES = ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan',
+        '1.#IND', '1.#QNAN',
+        '<NA>', 'NA', 'NULL', 'NaN', 'n/a', 'nan', 'null']
+
+
 
 class Utils:
-    def __init__(self):
-        pass
-    
-    
-    nanVal = ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan', '1.#IND', '1.#QNAN',
-                           '<NA>', 'NA', 'NULL', 'NaN', 'n/a', 'nan', 'null']
+    pass
 
-    class DataFromExcel:
-        def __init__(self,df,sheetName):
-            self.data = df
-            self.sheet = sheetName
-
-    def addTechColumns(df:[pd.DataFrame, pl.DataFrame],containerName: str=None,directoryPath:str=None,file:str = None):
-        df['techContainer'] = containerName
-        df['techFolderPath'] = directoryPath
-        df['techSourceFile'] = file
-        return df
+class DataFromExcel:
+    """
+    Creates a container in the Azure Blob Storage.
+    """
+    def __init__(self,df,sheet_name):
+        self.data = df
+        self.sheet_name = sheet_name
+    
+def add_tech_columns(self,df:[pd.DataFrame, pl.DataFrame],container_name: str=None,directory_path:str=None,file:str = None):
+    """
+    Creates a container in the Azure Blob Storage.
+    """
+    df['techContainer'] = container_name
+    df['techFolderPath'] = directory_path
+    df['techSourceFile'] = file
+        
+    return df
