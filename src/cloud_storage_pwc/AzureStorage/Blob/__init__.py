@@ -1,67 +1,84 @@
 #from typing import override
 from multiprocessing import AuthenticationError
+import csv
+import uuid
+import os
+from io import BytesIO
+from itertools import product
+import time
+import logging
+import numpy as np
+import pandas as pd
+import polars as pl
 from azure.storage.blob import BlobServiceClient
 from azure.identity import ClientSecretCredential
 from azure.identity import DefaultAzureCredential
 from azure.core.exceptions import HttpResponseError,ResourceNotFoundError
-import csv
 import pyarrow as pa
 import pyarrow.parquet as pq
-import uuid
 from ..StorageAccountVirtualClass import StorageAccountVirtualClass
-import os
-from io import BytesIO
-import numpy as np 
-import pandas as pd
-import polars as pl
-from itertools import product
-import time
-
-from ..Utils import CONTAINER_ACCESS_TYPES,ENCODING_TYPES,ENGINE_TYPES,ORIENT_TYPES,DELIMITER_TYPES,QUOTING_TYPES,NAN_VALUES,add_tech_columns,DataFromExcel
-import logging
-
-
+from ..Utils import CONTAINER_ACCESS_TYPES,ENCODING_TYPES,ENGINE_TYPES,ORIENT_TYPES,\
+    DELIMITER_TYPES,QUOTING_TYPES,NAN_VALUES,add_tech_columns,DataFromExcel
 
 
 class Blob(StorageAccountVirtualClass):
     """
     Classs
     """
-    def __init__(self, url:str,access_key:str = None,tenant_id:str = None,application_id:str = None,application_secret:str = None):
+    def __init__(self, url:str, access_key:str=None, tenant_id:str=None, application_id:str=None,
+                 application_secret:str=None):
         super().__init__()
         try:
-            if access_key is not None and tenant_id is None and application_id is None and application_secret is None:
+            if access_key is not None and tenant_id is None and application_id is None \
+                and application_secret is None:
                 logging.info("Blob-create by accesskey %s",url)
                 self.__service_client = BlobServiceClient(account_url=url, credential=access_key)
-            elif access_key is  None and tenant_id is None and application_id is None and application_secret is None:
-                logging.info("Blob-create by defaultazurecredential %s",url)
+            elif access_key is None and tenant_id is None and application_id is None \
+                and application_secret is None:
+                logging.info("Blob-create by defaultazurecredential %s", url)
                 credential = DefaultAzureCredential()
                 self.__service_client = BlobServiceClient(account_url=url, credential=credential)
-            elif access_key is  None and tenant_id is not None and application_id is not None and application_secret is not None:
-                logging.info("Blob-create by clientsecretcredential %s",url)
-                token_credential = ClientSecretCredential(tenant_id,application_id,application_secret )
-                self.__service_client = BlobServiceClient(account_url=url, credential=token_credential)
+            elif access_key is None and tenant_id is not None and application_id is not None \
+                and application_secret is not None:
+                logging.info("Blob-create by clientsecretcredential %s", url)
+                token_credential = ClientSecretCredential(tenant_id, application_id,
+                                                          application_secret)
+                self.__service_client = BlobServiceClient(account_url=url,
+                                                          credential=token_credential)
             self.__service_client.get_service_properties()
         except ResourceNotFoundError:
             logging.error("Storage account %s not found",url)
-            raise ResourceNotFoundError("Storage account %s not found",url,exc_info=False)
+            raise ResourceNotFoundError("Storage account %s not found", url, exc_info=False)
         except HttpResponseError:
-            logging.error("Storage account %s authorization error",url,exc_info=False)
-            raise AuthenticationError("Storage account %s authorization error",url,exc_info=False)
+            logging.error("Storage account %s authorization error", url, exc_info=False)
+            raise AuthenticationError("Storage account %s authorization error", url, exc_info=False)
         except Exception as e:
             logging.error(str(e))
-            
-            
-    def check_is_dfs(self)->bool:
+
+
+    def check_is_dfs(self) -> bool:
         """
-        Classs
+        Check if the Azure Blob Storage account is a Data Lake Storage Gen2 account.
+
+        Returns:
+            bool: True if the account is a Data Lake Storage Gen2 account, False otherwise.
         """
-        account_info= self.__service_client.get_account_information()
+        account_info = self.__service_client.get_account_information()
         return account_info['account_kind'] == 'StorageV2' and account_info['is_hns_enabled']
 
-    def ls_files(self,container_name : str, directory_path : str, recursive:bool=False)->list:
+
+    def ls_files(self, container_name:str, directory_path:str, recursive:bool=False) -> list:
         """
-        List files under a path, optionally recursively
+        List files under a specified path within an Azure Blob Storage container.
+
+        Args:
+            container_name (str): The name of the Azure Blob Storage container.
+            directory_path (str): The path within the container to list files from.
+            recursive (bool, optional): Flag indicating whether to list files recursively. Defaults 
+                to False.
+
+        Returns:
+            list: A list of file paths relative to the specified directory.
         """
         if not directory_path == '' and not directory_path.endswith('/'):
             directory_path += '/'
@@ -71,11 +88,13 @@ class Blob(StorageAccountVirtualClass):
         files = []
         for blob in blob_iter:
             relative_path = os.path.relpath(blob.name, directory_path)
-            if recursive or not '\\' in relative_path:
+            #if recursive or not '\\' in relative_path:
+            if recursive or not '/' in relative_path:
                 files.append(relative_path)
         return files
 
-    def read_binary_file(self, container_name: str, directory_path: str, file_name: str) -> bytes:
+
+    def read_binary_file(self, container_name:str, directory_path:str, file_name:str) -> bytes:
         """
         Reads a binary file from the specified container, directory, and file name.
 
@@ -94,11 +113,12 @@ class Blob(StorageAccountVirtualClass):
         blob_client = container_client.get_blob_client(path)
         download = blob_client.download_blob()
         download_bytes = download.readall()
-        return  download_bytes
+        return download_bytes
 
 
-    
-    def save_binary_file(self, inputbytes:bytes,container_name : str,directory_path : str,file_name:str,source_encoding:ENCODING_TYPES = "UTF-8",is_overwrite :bool=True):
+    def save_binary_file(self, inputbytes:bytes, container_name:str, directory_path:str,
+                         file_name:str, source_encoding:ENCODING_TYPES="UTF-8",
+                         is_overwrite:bool=True):
         """
         Save a binary file to the specified container in the cloud storage.
 
@@ -107,33 +127,70 @@ class Blob(StorageAccountVirtualClass):
             container_name (str): The name of the container in the cloud storage.
             directory_path (str): The directory path within the container to save the file.
             file_name (str): The name of the file to be saved.
-            source_encoding (ENCODING_TYPES, optional): The encoding type of the input data. Defaults to "UTF-8".
-            is_overwrite (bool, optional): Flag indicating whether to overwrite the file if it already exists. Defaults to True.
+            source_encoding (ENCODING_TYPES, optional): The encoding type of the input data.
+                Defaults to "UTF-8".
+            is_overwrite (bool, optional): Flag indicating whether to overwrite the file if it
+                already exists. Defaults to True.
         """
         container_client = self.__service_client.get_container_client(container=container_name)        
         if not directory_path == '' and not directory_path.endswith('/'):
             directory_path += '/'
-        new_blob_client = container_client.get_blob_client(directory_path +file_name)
-        #content_settings = ContentSettings(content_encoding=source_encoding,content_type = "text/csv")
-        new_blob_client.upload_blob(bytes(inputbytes),overwrite=is_overwrite)
+        new_blob_client = container_client.get_blob_client(directory_path + file_name)
+        #content_settings = ContentSettings(content_encoding=source_encoding,
+        #   content_type="text/csv")
+        new_blob_client.upload_blob(bytes(inputbytes), overwrite=is_overwrite)
 
-    def read_csv_file(self,container_name:str,directory_path:str,sourcefile_name:str,engine:ENGINE_TYPES = 'polars',source_encoding:ENCODING_TYPES = "UTF-8", column_delimiter:DELIMITER_TYPES = ',',is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines = True,tech_columns:bool=False):
-        
+
+    def read_csv_file(self, container_name:str, directory_path:str, sourcefile_name:str,
+                      engine:ENGINE_TYPES='polars', source_encoding:ENCODING_TYPES="UTF-8",
+                      column_delimiter:DELIMITER_TYPES=',', is_first_row_as_header:bool=False,
+                      skip_rows:int=0, skip_blank_lines=True, tech_columns:bool=False):
+        """
+        Read a CSV file from an Azure Blob Storage container and return the data as a DataFrame.
+
+        Args:
+            container_name (str): The name of the Azure Blob Storage container.
+            directory_path (str): The path within the container where the CSV file is located.
+            sourcefile_name (str): The name of the CSV file to be read.
+            engine (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars').
+                Defaults to 'polars'.
+            source_encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
+                to "UTF-8".
+            column_delimiter (DELIMITER_TYPES, optional): The delimiter used in the CSV file.
+                Defaults to ','.
+            is_first_row_as_header (bool, optional): Flag indicating whether the first row is
+                a header. Defaults to False.
+            skip_rows (int, optional): Number of rows to skip from the beginning of the file.
+                Defaults to 0.
+            skip_blank_lines (bool, optional): Flag indicating whether to skip blank lines. Defaults
+                to True.
+            tech_columns (bool, optional): Flag indicating whether to add technical columns (e.g.,
+                file path and name). Defaults to False.
+
+        Returns:
+            DataFrame: A DataFrame containing the data from the CSV file.
+        """
         if not directory_path == '' and not directory_path.endswith('/'):
-            path = directory_path +"/"+sourcefile_name
+            path = directory_path + "/" + sourcefile_name
         else:
             path = directory_path + sourcefile_name
-        
-        download_bytes = self.read_binary_file(container_name,directory_path,sourcefile_name)
-        if engine=='pandas':
-            df = self.read_csv_bytes(download_bytes,engine,source_encoding,column_delimiter,is_first_row_as_header,skip_rows,skip_blank_lines)
-        elif engine=='polars':
-            df = self.read_csv_bytes(download_bytes,engine,source_encoding,column_delimiter,is_first_row_as_header,skip_rows,skip_blank_lines)
+
+        download_bytes = self.read_binary_file(container_name, directory_path, sourcefile_name)
+        if engine == 'pandas':
+            df = self.read_csv_bytes(download_bytes, engine, source_encoding, column_delimiter,
+                                     is_first_row_as_header, skip_rows, skip_blank_lines)
+        elif engine == 'polars':
+            df = self.read_csv_bytes(download_bytes, engine, source_encoding, column_delimiter,
+                                     is_first_row_as_header, skip_rows, skip_blank_lines)
+        print(df)
         if tech_columns:
-            path = path.replace("\\","/")
-            df = add_tech_columns(df,container_name,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
+            path = path.replace("\\", "/")
+            df = add_tech_columns(df, container_name, path[0:path.rfind("/")],
+                                  path[path.rfind("/")+1:len(path)])
+
         return df
-    
+
+
     def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',source_encoding:ENCODING_TYPES = "UTF-8", column_delimiter:DELIMITER_TYPES = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,tech_columns:bool=False,recursive:bool=False) ->pd.DataFrame:
         list_files = self.ls_files(container_name,directory_path, recursive=recursive)
         #if  folders:
@@ -507,6 +564,8 @@ class Blob(StorageAccountVirtualClass):
         """
         container_client = self.__service_client.get_container_client(container=container_name)   
         if not container_client.exists():
+            if public_access == "Private":
+                public_access = None
             self.__service_client.create_container(name=container_name,public_access=public_access)
 
     def delete_container(self,container_name : str):
