@@ -25,12 +25,17 @@ class DataFromExcel:
         self.data = df
         self.sheet_name = sheet_name
     
-def add_tech_columns(self,df:[pd.DataFrame, pl.DataFrame],container_name: str=None,directory_path:str=None,file:str = None):
+def add_tech_columns(df:[pd.DataFrame,pl.DataFrame],container_name: str=None,directory_path:str=None,file:str = None):
     """
     Creates a container in the Azure Blob Storage.
     """
-    df['techContainer'] = container_name
-    df['techFolderPath'] = directory_path
-    df['techSourceFile'] = file
+    if isinstance(df, pd.DataFrame):
+        df['techContainer'] = container_name
+        df['techFolderPath'] = directory_path
+        df['techSourceFile'] = file
+    elif isinstance(df, pl.DataFrame):
+        df = df.with_columns(techContainer = pl.lit(container_name),
+                         techFolderPath = pl.lit(directory_path),
+                         techSourceFile = pl.lit(file))
         
     return df
