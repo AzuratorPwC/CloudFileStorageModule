@@ -424,7 +424,7 @@ class DataLake(StorageAccountVirtualClass):
         file_client.create_file()
         file_client.upload_data('')
         
-    def create_container(self,containerName : str,public_access:CONTAINER_ACCESS_TYPES=None):
+    def create_container(self,container_name : str,public_access:CONTAINER_ACCESS_TYPES=None):
         super().create_container(self.__service_client, containerName,public_access)
         
     def delete_container(self,containerName : str):

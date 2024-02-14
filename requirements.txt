@@ -8,3 +8,4 @@ ipykernel
 polars
 openpyxl
 pytest
+pytest-dependency

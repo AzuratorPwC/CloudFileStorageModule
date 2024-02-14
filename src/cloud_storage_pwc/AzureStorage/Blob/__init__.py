@@ -1,6 +1,8 @@
 #from typing import override
 from multiprocessing import AuthenticationError
 import csv
+from shutil import ExecError
+from tkinter import E
 import uuid
 import os
 from io import BytesIO
@@ -13,13 +15,14 @@ import polars as pl
 from azure.storage.blob import BlobServiceClient
 from azure.identity import ClientSecretCredential
 from azure.identity import DefaultAzureCredential
-from azure.core.exceptions import HttpResponseError,ResourceNotFoundError
+from azure.core.exceptions import HttpResponseError,ResourceNotFoundError,ResourceExistsError
+from ..Exceptions import *
 import pyarrow as pa
 import pyarrow.parquet as pq
 from ..StorageAccountVirtualClass import StorageAccountVirtualClass
 from ..Utils import CONTAINER_ACCESS_TYPES,ENCODING_TYPES,ENGINE_TYPES,ORIENT_TYPES,\
     DELIMITER_TYPES,QUOTING_TYPES,NAN_VALUES,add_tech_columns,DataFromExcel
-
+from azure.storage.blob._shared.authentication import SharedKeyCredentialPolicy
 
 class Blob(StorageAccountVirtualClass):
     """
@@ -32,144 +35,102 @@ class Blob(StorageAccountVirtualClass):
             if access_key is not None and tenant_id is None and application_id is None \
                 and application_secret is None:
                 logging.info("Blob-create by accesskey %s",url)
-                self.__service_client = BlobServiceClient(account_url=url, credential=access_key)
+                self.__service_client = BlobServiceClient(account_url=url, credential=access_key,logging_enable=False)
             elif access_key is None and tenant_id is None and application_id is None \
                 and application_secret is None:
                 logging.info("Blob-create by defaultazurecredential %s", url)
                 credential = DefaultAzureCredential()
-                self.__service_client = BlobServiceClient(account_url=url, credential=credential)
+                self.__service_client = BlobServiceClient(account_url=url, credential=credential,logging_enable=False)
             elif access_key is None and tenant_id is not None and application_id is not None \
                 and application_secret is not None:
                 logging.info("Blob-create by clientsecretcredential %s", url)
                 token_credential = ClientSecretCredential(tenant_id, application_id,
                                                           application_secret)
                 self.__service_client = BlobServiceClient(account_url=url,
-                                                          credential=token_credential)
+                                                          credential=token_credential,logging_enable=False)
             self.__service_client.get_service_properties()
-        except ResourceNotFoundError:
-            logging.error("Storage account %s not found",url)
-            raise ResourceNotFoundError("Storage account %s not found", url, exc_info=False)
-        except HttpResponseError:
-            logging.error("Storage account %s authorization error", url, exc_info=False)
-            raise AuthenticationError("Storage account %s authorization error", url, exc_info=False)
-        except Exception as e:
-            logging.error(str(e))
+        except ResourceNotFoundError as e:
+            logging.error(f"Storage account {url} not found")
+            raise StorageAccountNotFound(f"Storage account {url} not found") from e
+        except HttpResponseError as e:
+            logging.error(f"Storage account {url} authorization error")
+            raise StorageAccountAuthenticationError(f"Storage account {url} authorization error") from e
+        #except 
+        #except Exception as e:
+        #    logging.critical(str(e))
 
 
     def check_is_dfs(self) -> bool:
-        """
-        Check if the Azure Blob Storage account is a Data Lake Storage Gen2 account.
-
-        Returns:
-            bool: True if the account is a Data Lake Storage Gen2 account, False otherwise.
-        """
         account_info = self.__service_client.get_account_information()
         return account_info['account_kind'] == 'StorageV2' and account_info['is_hns_enabled']
 
 
     def ls_files(self, container_name:str, directory_path:str, recursive:bool=False) -> list:
-        """
-        List files under a specified path within an Azure Blob Storage container.
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if container_client.exists() == False:
+                raise ContainerNotFound(f"Container {container_name} not found")
+            if not directory_path == '' and not directory_path.endswith('/'):
+                directory_path += '/'
 
-        Args:
-            container_name (str): The name of the Azure Blob Storage container.
-            directory_path (str): The path within the container to list files from.
-            recursive (bool, optional): Flag indicating whether to list files recursively. Defaults 
-                to False.
-
-        Returns:
-            list: A list of file paths relative to the specified directory.
-        """
-        if not directory_path == '' and not directory_path.endswith('/'):
-            directory_path += '/'
-
-        container_client = self.__service_client.get_container_client(container=container_name)
-        blob_iter = container_client.list_blobs(name_starts_with=directory_path)
-        files = []
-        for blob in blob_iter:
-            relative_path = os.path.relpath(blob.name, directory_path)
-            #if recursive or not '\\' in relative_path:
-            if recursive or not '/' in relative_path:
-                files.append(relative_path)
-        return files
+            blob_iter = container_client.list_blobs(name_starts_with=directory_path)
+            files = []
+            for blob in blob_iter:
+                relative_path = os.path.relpath(blob.name, directory_path)
+                #if recursive or not '\\' in relative_path:
+                if recursive or not '/' in relative_path:
+                    files.append(relative_path)
+            return files
+        except ContainerNotFound as e:
+            raise e
+        except Exception as e:
+            raise Exception(f"Error listing files in container {container_name}") from e
 
 
     def read_binary_file(self, container_name:str, directory_path:str, file_name:str) -> bytes:
-        """
-        Reads a binary file from the specified container, directory, and file name.
-
-        Args:
-            container_name (str): The name of the container.
-            directory_path (str): The path to the directory where the file is located.
-            file_name (str): The name of the file.
-
-        Returns:
-            bytes: The content of the binary file.
-        """
-        if not directory_path == '' and not directory_path.endswith('/'):
-            directory_path += '/'
-        container_client = self.__service_client.get_container_client(container=container_name)
-        path = directory_path + file_name
-        blob_client = container_client.get_blob_client(path)
-        download = blob_client.download_blob()
-        download_bytes = download.readall()
-        return download_bytes
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if container_client.exists() == False:
+                raise ContainerNotFound(f"Container {container_name} not found")
+            if not directory_path == '' and not directory_path.endswith('/'):
+                directory_path += '/'
+            path = directory_path + file_name
+            blob_client = container_client.get_blob_client(path)
+            download = blob_client.download_blob()
+            download_bytes = download.readall()
+            return download_bytes
+        except ContainerNotFound as e:
+            raise e
+        except ResourceNotFoundError as e:
+            raise BlobNotFound(f"File {file_name} not found in container {container_name}") from e
+        except Exception as e:
+            raise Exception(f"Error reading file {file_name} in container {container_name}") from e
+    
 
 
     def save_binary_file(self, inputbytes:bytes, container_name:str, directory_path:str,
                          file_name:str, source_encoding:ENCODING_TYPES="UTF-8",
                          is_overwrite:bool=True):
-        """
-        Save a binary file to the specified container in the cloud storage.
-
-        Args:
-            inputbytes (bytes): The binary data to be saved.
-            container_name (str): The name of the container in the cloud storage.
-            directory_path (str): The directory path within the container to save the file.
-            file_name (str): The name of the file to be saved.
-            source_encoding (ENCODING_TYPES, optional): The encoding type of the input data.
-                Defaults to "UTF-8".
-            is_overwrite (bool, optional): Flag indicating whether to overwrite the file if it
-                already exists. Defaults to True.
-        """
-        container_client = self.__service_client.get_container_client(container=container_name)        
-        if not directory_path == '' and not directory_path.endswith('/'):
-            directory_path += '/'
-        new_blob_client = container_client.get_blob_client(directory_path + file_name)
-        #content_settings = ContentSettings(content_encoding=source_encoding,
-        #   content_type="text/csv")
-        new_blob_client.upload_blob(bytes(inputbytes), overwrite=is_overwrite)
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if container_client.exists() == False:
+                raise ContainerNotFound(f"Container {container_name} not found")       
+            if not directory_path == '' and not directory_path.endswith('/'):
+                directory_path += '/'
+            new_blob_client = container_client.get_blob_client(directory_path + file_name)
+            #content_settings = ContentSettings(content_encoding=source_encoding,
+            #   content_type="text/csv")
+            new_blob_client.upload_blob(bytes(inputbytes), overwrite=is_overwrite)
+        except ContainerNotFound as e:
+            raise e
+        except Exception as e:
+            raise Exception(f"Error saving file {file_name} in container {container_name}") from e
 
 
     def read_csv_file(self, container_name:str, directory_path:str, sourcefile_name:str,
                       engine:ENGINE_TYPES='polars', source_encoding:ENCODING_TYPES="UTF-8",
                       column_delimiter:DELIMITER_TYPES=',', is_first_row_as_header:bool=False,
                       skip_rows:int=0, skip_blank_lines=True, tech_columns:bool=False):
-        """
-        Read a CSV file from an Azure Blob Storage container and return the data as a DataFrame.
-
-        Args:
-            container_name (str): The name of the Azure Blob Storage container.
-            directory_path (str): The path within the container where the CSV file is located.
-            sourcefile_name (str): The name of the CSV file to be read.
-            engine (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars').
-                Defaults to 'polars'.
-            source_encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
-                to "UTF-8".
-            column_delimiter (DELIMITER_TYPES, optional): The delimiter used in the CSV file.
-                Defaults to ','.
-            is_first_row_as_header (bool, optional): Flag indicating whether the first row is
-                a header. Defaults to False.
-            skip_rows (int, optional): Number of rows to skip from the beginning of the file.
-                Defaults to 0.
-            skip_blank_lines (bool, optional): Flag indicating whether to skip blank lines. Defaults
-                to True.
-            tech_columns (bool, optional): Flag indicating whether to add technical columns (e.g.,
-                file path and name). Defaults to False.
-
-        Returns:
-            DataFrame: A DataFrame containing the data from the CSV file.
-        """
         if not directory_path == '' and not directory_path.endswith('/'):
             path = directory_path + "/" + sourcefile_name
         else:
@@ -327,25 +288,7 @@ class Blob(StorageAccountVirtualClass):
 
     
     def save_dataframe_as_parquet(self,df:pd.DataFrame,container_name : str,directory_path:str,partition_columns:list=None,compression:str=None):
-        """
-        Saves a Pandas DataFrame as Parquet format in Azure Blob Storage.
 
-        Args:
-            df (pd.DataFrame): The DataFrame to be saved.
-            container_name (str): The name of the container in Azure Blob Storage.
-            directory_path (str): The path of the directory within the container.
-            partition_columns (list, optional): A list of columns to be used for partitioning the data. Defaults to None.
-            compression (str, optional): The compression method for the Parquet file ('snappy', 'gzip', 'brotli', None).
-                Defaults to None.
-
-        Returns:
-            None
-
-        Raises:
-            ValueError: If the compression method is not valid.
-            ResourceNotFoundError: If the specified container or directory does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """
         VALID_compression = {'snappy', 'gzip', 'brotli', None}
         if compression is not None:
             compression=compression.lower()
@@ -389,25 +332,7 @@ class Blob(StorageAccountVirtualClass):
 
         
     def save_dataframe_as_parqarrow(self,df:pd.DataFrame,container_name : str,directory_path:str,partition_columns:list=None,compression:str=None):
-        """
-        Saves a Pandas DataFrame as Parquet Arrow format in Azure Blob Storage.
-
-        Args:
-            df (pd.DataFrame): The DataFrame to be saved.
-            container_name (str): The name of the container in Azure Blob Storage.
-            directory_path (str): The path of the directory within the container.
-            partition_columns (list, optional): A list of columns to be used for partitioning the data. Defaults to None.
-            compression (str, optional): The compression method for the Parquet file ('NONE', 'SNAPPY', 'GZIP', 'BROTLI', 'LZ4', 'ZSTD').
-                Defaults to None.
-
-        Returns:
-            None
-
-        Raises:
-            ValueError: If the compression method is not valid.
-            ResourceNotFoundError: If the specified container or directory does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """    
+ 
         VALID_compression = {'NONE','SNAPPY', 'GZIP', 'BROTLI', 'LZ4', 'ZSTD'}
         if compression is not None:
             compression=compression.upper()
@@ -453,25 +378,7 @@ class Blob(StorageAccountVirtualClass):
                 #new_client_parq.upload_blob(buf.getvalue().to_pybytes(),overwrite=True)
 
     def save_json_file(self, df: [pd.DataFrame, pl.DataFrame], container_name: str, directory: str, file:str = None, engine: ENGINE_TYPES ='polars', orient:ORIENT_TYPES= 'records'):
-        """
-        Saves a Pandas or Polars DataFrame to a JSON file in Azure Blob Storage.
 
-        Args:
-            df ([pd.DataFrame, pl.DataFrame]): The DataFrame to be saved.
-            container_name (str): The name of the container in Azure Blob Storage.
-            directory (str): The path of the directory within the container.
-            file (str, optional): The name of the JSON file. If not provided, a random name will be generated. Defaults to None.
-            engine (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'polars'.
-            orient (ORIENT_TYPES, optional): The JSON orientation type ('records', 'split', 'index', 'columns', or 'values'). Defaults to 'records'.
-
-        Returns:
-            None
-
-        Raises:
-            Exception: If the DataFrame argument is not a Pandas or Polars DataFrame.
-            ResourceNotFoundError: If the specified container or directory does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """
         if isinstance(df, pd.DataFrame):
             if df.empty:
                 return
@@ -508,25 +415,6 @@ class Blob(StorageAccountVirtualClass):
     
     def save_listdataframe_as_xlsx(self,list_df:list, sheets:list, container_name : str,directory_path:str ,file_name:str,index=False,header=False):
         # for multiple dfs
-        """
-        Saves a list of Pandas DataFrames as separate sheets in an Excel file in Azure Blob Storage.
-
-        Args:
-            list_df (list): A list of Pandas DataFrames to be saved as sheets.
-            sheets (list): A list of sheet names corresponding to the DataFrames.
-            container_name (str): The name of the container in Azure Blob Storage.
-            directory_path (str): The path of the directory within the container.
-            file_name (str): The name of the Excel file.
-            index (bool, optional): If True, includes the DataFrame index in the Excel file. Defaults to False.
-            header (bool, optional): If True, includes the DataFrame column names in the Excel file. Defaults to False.
-
-        Returns:
-            None
-
-        Raises:
-            ResourceNotFoundError: If the specified container or directory does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """
         buf = BytesIO() 
         with pd.ExcelWriter(buf, engine = 'openpyxl') as writer:
             for df, sheet_name in zip(list_df,sheets):
@@ -537,23 +425,6 @@ class Blob(StorageAccountVirtualClass):
     
     def read_parquet_file(self, container_name: str, directory_path: str,sourcefile_name:str, columns: list = None,tech_columns:bool=False)->pd.DataFrame:
         
-        """
-        Reads a Parquet file from Azure Blob Storage and returns its content as a Pandas DataFrame.
-
-        Args:
-            container_name (str): The name of the container containing the Parquet file.
-            directory_path (str): The path of the directory containing the Parquet file.
-            sourcefile_name (str): The name of the Parquet file to be read.
-            columns (list, optional): A list of column names to be read from the Parquet file. Defaults to None.
-            tech_columns (bool, optional): If True, adds technical columns to the DataFrame. Defaults to False.
-
-        Returns:
-            pd.DataFrame: A Pandas DataFrame containing the content of the Parquet file.
-
-        Raises:
-            ResourceNotFoundError: If the specified container, directory, or file does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """
         if not directory_path == '' and not directory_path.endswith('/'):
             path = directory_path +"/"+sourcefile_name
         else:
@@ -568,24 +439,7 @@ class Blob(StorageAccountVirtualClass):
         return df
     
     def read_parquet_folder(self,container_name:str,directory_path:str,folders:list=None,columns:list = None,tech_columns:bool=False,recursive:bool=False) ->pd.DataFrame:
-        """
-        Reads multiple Parquet files from a folder in Azure Blob Storage and returns their content as a Pandas DataFrame.
 
-        Args:
-            container_name (str): The name of the container containing the Parquet files.
-            directory_path (str): The path of the directory containing the Parquet files.
-            folders (list, optional): A list of folder names to filter the files. Defaults to None.
-            columns (list, optional): A list of column names to be read from the Parquet files. Defaults to None.
-            tech_columns (bool, optional): If True, adds technical columns to the DataFrame. Defaults to False.
-            recursive (bool, optional): If True, includes files from subdirectories. Defaults to False.
-
-        Returns:
-            pd.DataFrame: A Pandas DataFrame containing the content of the Parquet files.
-
-        Raises:
-            ResourceNotFoundError: If the specified container or directory does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """
         list_files = self.ls_files(container_name,directory_path, recursive=recursive)
         if  folders:
             new_list=[]
@@ -604,206 +458,145 @@ class Blob(StorageAccountVirtualClass):
         return df
     
     def delete_file(self,container_name : str,directory_path : str,file_name:str,wait:bool=True):
-        """
-        Deletes a file from Azure Blob Storage.
-
-        Args:
-            container_name (str): The name of the container containing the file.
-            directory_path (str): The path of the directory containing the file.
-            file_name (str): The name of the file to be deleted.
-            wait (bool, optional): If True, waits for the deletion to complete before returning. Defaults to True.
-
-        Returns:
-            None
-
-        Raises:
-            ResourceNotFoundError: If the specified container, directory, or file does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """
-        container_client = self.__service_client.get_container_client(container=container_name)
-        if directory_path =="" or directory_path is None:
-            path=file_name
-        else:
-            path = "/".join( (directory_path,file_name)) 
-        blob_client = container_client.get_blob_client(path)
-        blob_client.delete_blob(delete_snapshots="include")
-        
-        if wait:
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if container_client.exists() == False:
+                raise ContainerNotFound(f"Container {container_name} not found")
+            if directory_path =="" or directory_path is None:
+                path=file_name
+            else:
+                path = "/".join( (directory_path,file_name)) 
             blob_client = container_client.get_blob_client(path)
-            check_if_exist = blob_client.exists()
-            while check_if_exist:
-                time.sleep(5)
+            blob_client.delete_blob(delete_snapshots="include")
+        
+            if wait:
                 blob_client = container_client.get_blob_client(path)
                 check_if_exist = blob_client.exists()
+                while check_if_exist:
+                    time.sleep(5)
+                    blob_client = container_client.get_blob_client(path)
+                    check_if_exist = blob_client.exists()
+        except ResourceNotFoundError as e:
+            raise BlobNotFound(f"File {file_name} not found in container {container_name}") from e
+        except ContainerNotFound as e:
+            raise e
+        except Exception as e:
+            raise Exception(f"Error deleting file {file_name} in container {container_name}") from e
         
     def delete_folder(self,container_name : str,directory_path : str,wait:bool=True):
-        """
-        Deletes a folder and its contents from Azure Blob Storage.
-
-        Args:
-            container_name (str): The name of the container containing the folder.
-            directory_path (str): The path of the folder to be deleted.
-            wait (bool, optional): If True, waits for the deletion to complete before returning. Defaults to True.
-
-        Returns:
-            None
-
-        Raises:
-            ResourceNotFoundError: If the specified container or directory does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """
-        list_files = self.ls_files(container_name,directory_path,True)
-        for f in list_files:
-            path = directory_path + "/" + f.replace("\\","/")
-            self.delete_file(container_name,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if container_client.exists() == False:
+                raise ContainerNotFound(f"Container {container_name} not found")
         
-        if wait:
             list_files = self.ls_files(container_name,directory_path,True)
-            while len(list_files)>0:
-                time.sleep(5)
+            for f in list_files:
+                path = directory_path + "/" + f.replace("\\","/")
+                self.delete_file(container_name,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
+        
+            if wait:
                 list_files = self.ls_files(container_name,directory_path,True)
+                while len(list_files)>0:
+                    time.sleep(5)
+                    list_files = self.ls_files(container_name,directory_path,True)
+        except ContainerNotFound as e:
+            raise e
+        except Exception as e:
+            raise Exception(f"Error deleting folder {directory_path} in container {container_name}") from e
         
     def move_file(self,container_name : str,directory_path : str,file_name:str,new_container_name : str,new_directory_path : str,newfile_name:str,is_overwrite :bool=True,isDeleteSourceFile:bool=False):
-        """
-        Moves a file from one location to another within Azure Blob Storage.
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if container_client.exists() is False:
+                raise ContainerNotFound(f"Container source {container_name} not found")
+            container_client = self.__service_client.get_container_client(container=new_container_name)
+            if container_client.exists() is False:
+                raise ContainerNotFound(f"Container target {container_name} not found")
 
-        Args:
-            container_name (str): The name of the container containing the source file.
-            directory_path (str): The path of the directory containing the source file.
-            file_name (str): The name of the source file to be moved.
-            new_container_name (str): The name of the container where the file will be moved.
-            new_directory_path (str): The path of the directory where the file will be moved.
-            new_file_name (str): The new name for the moved file.
-            is_overwrite (bool, optional): If True, overwrites the destination file if it already exists. Defaults to True.
-            is_delete_source_file (bool, optional): If True, deletes the source file after moving. Defaults to False.
-
-        Returns:
-            None
-
-        Raises:
-            ResourceNotFoundError: If the specified source container, directory, or file does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """
-        self.save_binary_file(self.read_binary_file(container_name,directory_path,file_name),new_container_name,new_directory_path,newfile_name,is_overwrite)
-        if isDeleteSourceFile:
-            self.delete_file(container_name ,directory_path ,file_name)
+            self.save_binary_file(self.read_binary_file(container_name,directory_path,file_name),new_container_name,new_directory_path,newfile_name,is_overwrite)
+            if isDeleteSourceFile:
+                self.delete_file(container_name ,directory_path ,file_name)
+        except ContainerNotFound as e:
+            raise e
+        except ResourceNotFoundError as e:
+            raise BlobNotFound(f"File {file_name} not found in container {container_name}") from e
+        except Exception as e:
+            raise Exception(f"Error moving file {file_name} in container {container_name} to container {new_container_name}") from e
             
-    def move_folder(self,container_name : str,directory_path : str,new_container_name : str,new_directory_path : str,is_overwrite :bool=True,is_delete_source_folder:bool=False)->bool:
-        list_files = self.ls_files(container_name,directory_path,True)
-        """
-        Moves all files from one folder to another within Azure Blob Storage.
+    def move_folder(self,container_name : str,directory_path : str,new_container_name : str,new_directory_path : str,is_overwrite :bool=True,is_delete_source_folder:bool=False):
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if container_client.exists() == False:
+                raise ContainerNotFound(f"Container source {container_name} not found")
+            container_client = self.__service_client.get_container_client(container=new_container_name)
+            if container_client.exists() == False:
+                raise ContainerNotFound(f"Container target {container_name} not found")
+        
+            list_files = self.ls_files(container_name,directory_path,True)
 
-        Args:
-            container_name (str): The name of the container containing the source folder.
-            directory_path (str): The path of the source folder.
-            new_container_name (str): The name of the container where the folder will be moved.
-            new_directory_path (str): The path of the target directory where the folder will be moved.
-            is_overwrite (bool, optional): If True, overwrites destination files if they already exist. Defaults to True.
-            is_delete_source_folder (bool, optional): If True, deletes the source folder after moving. Defaults to False.
+            for i in list_files:
+                self.move_file(container_name,directory_path,i,new_container_name,new_directory_path,i,True,is_delete_source_folder)
+        except ContainerNotFound as e:
+            raise e
+        except Exception as e:
+            raise Exception(f"Error moving file {file_name} in container {container_name} to container {new_container_name}") from e
 
-        Returns:
-            bool: True if the folder move operation is successful.
-
-        Raises:
-            ResourceNotFoundError: If the specified source container or directory does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """
-        for i in list_files:
-            self.move_file(container_name,directory_path,i,new_container_name,new_directory_path,i,True,is_delete_source_folder)
-        return True
         
     def renema_file(self,container_name : str,directory_path : str,file_name:str,newfile_name:str):
-        """
-        Renames a file within a specified container in Azure Blob Storage.
-
-        Args:
-            container_name (str): The name of the container containing the file.
-            directory_path (str): The path of the directory containing the file.
-            file_name (str): The name of the file to be renamed.
-            new_file_name (str): The new name for the renamed file.
-
-        Returns:
-            None
-
-        Raises:
-            ResourceNotFoundError: If the specified container, directory, or source file does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """
-        self.move_file(container_name,directory_path,file_name,container_name,directory_path,newfile_name,True,True) 
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if container_client.exists() == False:
+                raise ContainerNotFound(f"Container {container_name} not found")
+            self.move_file(container_name,directory_path,file_name,container_name,directory_path,newfile_name,True,True) 
+        except ContainerNotFound as e:
+            raise e
+        except ResourceNotFoundError as e:
+            raise BlobNotFound(f"File {file_name} not found in container {container_name}") from e
+        except Exception as e:
+            raise Exception(f"Error moving file {file_name} in container {container_name}") from e
     
     def renema_folder(self,container_name : str,directory_path : str,new_directory_path:str):
-        """
-        Renames a folder within a specified container in Azure Blob Storage.
-
-        Args:
-            container_name (str): The name of the container containing the folder.
-            directory_path (str): The path of the folder to be renamed.
-            new_directory_path (str): The new path for the renamed folder.
-
-        Returns:
-            None
-
-        Raises:
-            ResourceNotFoundError: If the specified container or source directory does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """
-        self.move_folder(container_name,directory_path,container_name,new_directory_path,True,True)
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if container_client.exists() == False:
+                raise ContainerNotFound(f"Container {container_name} not found")
+            self.move_folder(container_name,directory_path,container_name,new_directory_path,True,True)
+        except ContainerNotFound as e:
+            raise e
+        except Exception as e:
+            raise Exception(f"Error moving folder {directory_path} in container {container_name}") from e
         
-    def create_empty_file(self,container_name : str,directory_path : str,file_name:str):
-        """
-        Creates an empty file within a specified container in Azure Blob Storage.
-
-        Args:
-            container_name (str): The name of the container where the file will be created.
-            directory_path (str): The directory path within the container. Use an empty string for the root directory.
-            file_name (str): The name of the file to be created.
-
-        Returns:
-            None
-
-        Raises:
-            ResourceNotFoundError: If the specified container does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """
-        container_client = self.__service_client.get_container_client(container=container_name)
-        if directory_path!='':
-            directory_path=directory_path+'/'
-        path = directory_path +file_name
-        blob_client = container_client.get_blob_client(path)
-        blob_client.upload_blob('') 
+    def create_empty_file(self,container_name : str,directory_path:str,file_name:str):
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if directory_path!='':
+                directory_path=directory_path+'/'
+            path = directory_path +file_name
+            blob_client = container_client.get_blob_client(path)
+            blob_client.upload_blob('')
+        except ResourceNotFoundError as e:
+            raise ContainerNotFound(f"Container {container_name} not found") from e
+        except ResourceExistsError as e:
+            raise BlobAlreadyExists(f"File {file_name} already exists") from e
+        except Exception as e:
+            raise Exception(f"Error creating file {file_name} in container {container_name}") from e
 
     def create_container(self,container_name : str,public_access:CONTAINER_ACCESS_TYPES='Private'):
-        """
-        Creates a container in the Azure Blob Storage.
-
-        Args:
-            container_name (str): The name of the container to create.
-            public_access (CONTAINER_ACCESS_TYPES, optional): The level of public access for the container. Defaults to None.
-
-        Returns:
-            None
-        """
-        container_client = self.__service_client.get_container_client(container=container_name)   
-        if not container_client.exists():
-            if public_access == "Private":
-                public_access = None
-            self.__service_client.create_container(name=container_name,public_access=public_access)
-
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if not container_client.exists():
+                if public_access == "Private":
+                    public_access = None
+                self.__service_client.create_container(name=container_name,public_access=public_access)
+        except ResourceExistsError as e:
+            raise ContainerAccessTypes(f"Container access {public_access} is not allowe in {container_name}") from e
+        except Exception as e:
+            raise Exception(f"Error creating container {container_name}") from e
     def delete_container(self,container_name : str):
-        """
-        Deletes a container from Azure Blob Storage, if it exists.
-
-        Args:
-            container_name (str): The name of the container to be deleted.
-
-        Returns:
-            None
-
-        Raises:
-            ResourceNotFoundError: If the specified container does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """
-        container_client = self.__service_client.get_container_client(container=container_name)
-        if container_client.exists():
-            container_client.delete_container()
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if container_client.exists():
+                container_client.delete_container()
+        except Exception as e:
+            raise Exception(f"Error deleting container {container_name}") from e
             

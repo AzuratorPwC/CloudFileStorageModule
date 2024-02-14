@@ -34,7 +34,9 @@
 				"Azurite.azurite",
 				"ms-toolsai.jupyter@2023.7.1002162226",
 				"ms-python.pylint",
-				"MS-vsliveshare.vsliveshare"
+				"MS-vsliveshare.vsliveshare",
+				"ms-dotnettools.vscode-dotnet-runtime",
+				"ms-dotnettools.vscode-dotnet-pack"
 			]
 		}
 	},
