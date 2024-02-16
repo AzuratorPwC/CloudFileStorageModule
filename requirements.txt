@@ -9,3 +9,4 @@ polars
 openpyxl
 pytest
 pytest-dependency
+fastexcel

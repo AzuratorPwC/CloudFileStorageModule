@@ -48,52 +48,52 @@ class DataLake(StorageAccountVirtualClass):
     def check_is_dfs(self)->bool:
         return True
 
-    def save_binary_file(self, inputbytes:bytes,containerName : str,directoryPath : str,fileName:str,sourceEncoding: ENCODING_TYPES = "UTF-8",isOverWrite :bool=True):
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName)        
-        directory_client = file_system_client.get_directory_client(directoryPath)
+    def save_binary_file(self, inputbytes:bytes,container_name : str,directory_path : str,fileName:str,sourceEncoding: ENCODING_TYPES = "UTF-8",isOverWrite :bool=True):
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)        
+        directory_client = file_system_client.get_directory_client(directory_path)
         new_file_client = directory_client.create_file(fileName)
         #content_settings = ContentSettings(content_encoding=sourceEncoding,content_type = "text/csv")
         new_file_client.upload_data(bytes(inputbytes),overwrite=isOverWrite)
     
-    def read_binary_file(self,containerName : str,directoryPath : str,fileName:str)->bytes:
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName) 
-        directory_client = file_system_client.get_directory_client(directoryPath)
+    def read_binary_file(self,container_name : str,directory_path : str,fileName:str)->bytes:
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name) 
+        directory_client = file_system_client.get_directory_client(directory_path)
         file_client = directory_client.get_file_client(fileName)
         download = file_client.download_file()
         download_bytes = download.readall()
         return download_bytes
 
     
-    def read_csv_file(self,containerName:str,directoryPath:str,sourceFileName:str,engine: ENGINE_TYPES ='polars',sourceEncoding:ENCODING_TYPES = "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines = True,addStrTechCol:bool=False):
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName) 
-        directory_client = file_system_client.get_directory_client(directoryPath)
-        file_client = directory_client.get_file_client(sourceFileName)
+    def read_csv_file(self,container_name:str,directory_path:str,file_name:str,engine: ENGINE_TYPES ='polars',sourceEncoding:ENCODING_TYPES = "UTF-8", columnDelimiter:str = ";",is_first_row_as_header:bool = False,skip_rows:int=0,skipBlankLines = True,tech_columns:bool=False):
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name) 
+        directory_client = file_system_client.get_directory_client(directory_path)
+        file_client = directory_client.get_file_client(file_name)
         download = file_client.download_file()
         download_bytes = download.readall()
-        df = self.read_csv_bytes(download_bytes,engine,sourceEncoding,columnDelimiter,isFirstRowAsHeader,skipRows,skipBlankLines)
+        df = self.read_csv_bytes(download_bytes,engine,sourceEncoding,columnDelimiter,is_first_row_as_header,skip_rows,skipBlankLines)
         
-        if addStrTechCol:
-            df =  Utils.addTechColumns(df,containerName,directoryPath.replace("\\","/"),sourceFileName)
+        if tech_columns:
+            df =  Utils.addTechColumns(df,container_name,directory_path.replace("\\","/"),file_name)
         return df
     
-    def read_csv_folder(self,containerName:str,directoryPath:str,engine: ENGINE_TYPES ='polars',includeSubfolders:list=None,sourceEncoding :ENCODING_TYPES = "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = False,skipRows:int=0,skipBlankLines=True,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName) 
-        listFiles = file_system_client.get_paths(directoryPath,recursive)
+    def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES ='polars',includeSubfolders:list=None,sourceEncoding :ENCODING_TYPES = "UTF-8", columnDelimiter:str = ";",is_first_row_as_header:bool = False,skip_rows:int=0,skipBlankLines=True,tech_columns:bool=False,recursive:bool=False) ->pd.DataFrame:
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name) 
+        listFiles = file_system_client.get_paths(directory_path,recursive)
         df = pd.DataFrame()
         if listFiles:
             for i,r in enumerate(listFiles):
-                file = r.name.replace(directoryPath + "/","")
-                dfNew = self.read_csv_file(containerName,directoryPath,file,engine,sourceEncoding,columnDelimiter,isFirstRowAsHeader,skipRows,skipBlankLines,addStrTechCol)
+                file = r.name.replace(directory_path + "/","")
+                dfNew = self.read_csv_file(container_name,directory_path,file,engine,sourceEncoding,columnDelimiter,is_first_row_as_header,skip_rows,skipBlankLines,tech_columns)
                 df = pd.concat([df, dfNew], axis=0, join="outer", ignore_index=True)
         return df
     
-    def read_excel_file(self,containerName:str,directoryPath:str,sourceFileName:str,engine: ENGINE_TYPES ='polars',skipRows:int = 0,isFirstRowAsHeader:bool = False,sheets:list()=None,addStrTechCol:bool=False):
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName) 
-        directory_client = file_system_client.get_directory_client(directoryPath)
-        file_client = directory_client.get_file_client(sourceFileName)
+    def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine: ENGINE_TYPES ='polars',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets:list=None,tech_columns:bool=False):
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
+        directory_client = file_system_client.get_directory_client(directory_path)
+        file_client = directory_client.get_file_client(file_name)
         download = file_client.download_file()
         download_bytes = download.readall()
-        if sourceFileName.endswith(".xls"):
+        if file_name.endswith(".xls"):
             workbook = pd.ExcelFile(download_bytes, engine='xlrd') 
         else:
             workbook = pd.ExcelFile(download_bytes)
@@ -102,14 +102,14 @@ class DataLake(StorageAccountVirtualClass):
         if bool(sheets):
             workbook_sheetnames=list(set(workbook_sheetnames) & set(sheets))
         list_of_dff = []
-        if isFirstRowAsHeader:
-            isFirstRowAsHeader=0
+        if is_first_row_as_header:
+            is_first_row_as_header=0
         else:
-            isFirstRowAsHeader=None
+            is_first_row_as_header=None
         for sheet in workbook_sheetnames:
-            dff = pd.read_excel(workbook, sheet_name = sheet,skiprows=skipRows, index_col = None, header = isFirstRowAsHeader)
-            if addStrTechCol:
-                df =  Utils.addTechColumns(df,containerName,directoryPath.replace("\\","/"),sourceFileName)
+            dff = pd.read_excel(workbook, sheet_name = sheet,skip_rows=skip_rows, index_col = None, header = is_first_row_as_header)
+            if tech_columns:
+                df =  Utils.addTechColumns(df,container_name,directory_path.replace("\\","/"),file_name)
             
             list_of_dff.append(Utils.DataFromExcel(dff,sheet))
             
@@ -117,7 +117,7 @@ class DataLake(StorageAccountVirtualClass):
     
     
     
-    def save_dataframe_as_parquet(self,df:pd.DataFrame,containerName : str,directoryPath:str,partitionCols:list=None,compression:str=None):
+    def save_dataframe_as_parquet(self,df:pd.DataFrame,container_name : str,directory_path:str,partitionCols:list=None,compression:str=None):
         
         VALID_compression = {'snappy', 'gzip', 'brotli', None}
         if compression is not None:
@@ -126,16 +126,16 @@ class DataLake(StorageAccountVirtualClass):
             raise ValueError("results: status must be one of %r." % VALID_compression)
         if not(df.empty):
             df = df.replace('\n', ' ', regex=True)
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName) 
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name) 
         buf = BytesIO()
         df.to_parquet(buf,allow_truncated_timestamps=True, use_deprecated_int96_timestamps=True,partition_cols=partitionCols)
         buf.seek(0)
-        directory_client = file_system_client.get_directory_client(directoryPath)
+        directory_client = file_system_client.get_directory_client(directory_path)
         new_client_parq = directory_client.create_file(f"{uuid.uuid4().hex}.parquet")
         new_client_parq.upload_data(buf.getvalue(),overwrite=True)
     
 
-    def save_dataframe_as_csv(self,df:[pd.DataFrame, pl.DataFrame],containerName : str,directoryPath:str,file:str=None,partitionCols:list=None,sourceEncoding:ENCODING_TYPES= "UTF-8", columnDelimiter:str = ";",isFirstRowAsHeader:bool = True,quoteChar:str=' ',quoting:['never', 'always', 'necessary']='never',escapeChar:str="\\", engine: ENGINE_TYPES ='polars'):
+    def save_dataframe_as_csv(self,df:[pd.DataFrame, pl.DataFrame],container_name : str,directory_path:str,file:str=None,partitionCols:list=None,sourceEncoding:ENCODING_TYPES= "UTF-8", columnDelimiter:str = ";",is_first_row_as_header:bool = True,quoteChar:str=' ',quoting:['never', 'always', 'necessary']='never',escapeChar:str="\\", engine: ENGINE_TYPES ='polars'):
         
         quoting_dict = {'never':csv.QUOTE_NONE, 'always':csv.QUOTE_ALL, 'necessary':csv.QUOTE_MINIMAL}
         
@@ -181,18 +181,18 @@ class DataLake(StorageAccountVirtualClass):
                     if not(df_part.empty):
                         buf = BytesIO()
                         df_reset = df_part.reset_index(drop=True)
-                        df_reset.to_csv(buf,index=False, sep=columnDelimiter,encoding=sourceEncoding,header=isFirstRowAsHeader,quotechar=quoteChar, quoting=quoting_dict[quoting],escapechar=escapeChar)
+                        df_reset.to_csv(buf,index=False, sep=columnDelimiter,encoding=sourceEncoding,header=is_first_row_as_header,quotechar=quoteChar, quoting=quoting_dict[quoting],escapechar=escapeChar)
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),containerName ,directoryPath +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.csv",True)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.csv",True)
 
 
                 if isinstance(df_part, pl.DataFrame):
                     if not(df_part.is_empty()):
                         buf = BytesIO()
                         df_reset = df_part
-                        df_reset.write_csv(buf, separator=columnDelimiter, has_header=isFirstRowAsHeader, quote_char='"', quote_style=quoting)
+                        df_reset.write_csv(buf, separator=columnDelimiter, has_header=is_first_row_as_header, quote_char='"', quote_style=quoting)
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),containerName ,directoryPath +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.csv",True)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.csv",True)
                                                 
         
         else:
@@ -200,10 +200,10 @@ class DataLake(StorageAccountVirtualClass):
             
             if isinstance(df, pd.DataFrame):
                 df_reset = df.reset_index(drop=True)
-                df_reset.to_csv(buf,index=False, sep=columnDelimiter,encoding=sourceEncoding,header=isFirstRowAsHeader,quotechar=quoteChar, quoting=quoting_dict[quoting],escapechar=escapeChar)
+                df_reset.to_csv(buf,index=False, sep=columnDelimiter,encoding=sourceEncoding,header=is_first_row_as_header,quotechar=quoteChar, quoting=quoting_dict[quoting],escapechar=escapeChar)
             else:
                 df_reset = df
-                df_reset.write_csv(buf, separator=columnDelimiter, has_header=isFirstRowAsHeader, quote_style=quoting)
+                df_reset.write_csv(buf, separator=columnDelimiter, has_header=is_first_row_as_header, quote_style=quoting)
     
             buf.seek(0)
 
@@ -211,10 +211,10 @@ class DataLake(StorageAccountVirtualClass):
                 filename = file
             else:
                 filename = f"{uuid.uuid4().hex}.csv"
-            self.save_binary_file(buf.getvalue(),containerName ,directoryPath,filename,True)
+            self.save_binary_file(buf.getvalue(),container_name ,directory_path,filename,True)
 
         
-    def save_dataframe_as_parqarrow(self,df:pd.DataFrame,containerName : str,directoryPath:str,partitionCols:list=None,compression:str='NONE'):
+    def save_dataframe_as_parqarrow(self,df:pd.DataFrame,container_name : str,directory_path:str,partitionCols:list=None,compression:str='NONE'):
         VALID_compression = {'NONE','SNAPPY', 'GZIP', 'BROTLI', 'LZ4', 'ZSTD'}
         if compression is not None:
             compression=compression.upper()
@@ -225,17 +225,17 @@ class DataLake(StorageAccountVirtualClass):
         if compression not in VALID_compression:
             raise ValueError("results: status must be one of %r." % VALID_compression)
         
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName) 
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name) 
         
         table = pa.Table.from_pandas(df)
         buf = pa.BufferOutputStream()
         pq.write_table(table, buf,use_deprecated_int96_timestamps=True, allow_truncated_timestamps=True,compression=compression)
-        directory_client = file_system_client.get_directory_client(directoryPath)
+        directory_client = file_system_client.get_directory_client(directory_path)
         new_client_parq = directory_client.create_file(f"{uuid.uuid4().hex}.parquet")
         new_client_parq.upload_data(buf.getvalue().to_pybytes(),overwrite=True)
 
 
-    def save_json_file(self, df:[pd.DataFrame, pl.DataFrame], containerName: str, directory: str, file:str = None, engine: ENGINE_TYPES ='polars', orient: ORIENT_TYPES = 'records'):    
+    def save_json_file(self, df:[pd.DataFrame, pl.DataFrame], container_name: str, directory: str, file:str = None, engine: ENGINE_TYPES ='polars', orient: ORIENT_TYPES = 'records'):    
 
         if isinstance(df, pd.DataFrame):
             if not(df.empty):
@@ -269,52 +269,52 @@ class DataLake(StorageAccountVirtualClass):
             filename = file
         else:
             filename = f"{uuid.uuid4().hex}.json"
-        self.save_binary_file(buf.getvalue(), containerName ,directory,filename,True)
+        self.save_binary_file(buf.getvalue(), container_name ,directory,filename,True)
 
-    def save_listdataframe_as_xlsx(self,list_df:list, list_sheetnames:list, containerName : str,directoryPath:str ,fileName:str,index=False,header=False):
+    def save_listdataframe_as_xlsx(self,list_df:list, list_sheetnames:list, container_name : str,directory_path:str ,fileName:str,index=False,header=False):
         # for multiple dfs
         buf = BytesIO() 
         with pd.ExcelWriter(buf, engine = 'openpyxl') as writer:
             for df, sheet_name in zip(list_df,list_sheetnames):
                 df.to_excel(writer, index = index, header = header, sheet_name = sheet_name)   
         
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName) 
-        directory_client = file_system_client.get_directory_client(directoryPath)
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name) 
+        directory_client = file_system_client.get_directory_client(directory_path)
         new_client_xlsx = directory_client.create_file(f"{fileName}.xlsx")
         buf.seek(0)
         new_client_xlsx.upload_data(buf.getvalue(),overwrite=True)
     
     
-    def read_parquet_file(self, containerName: str, directoryPath: str,sourceFileName:str, columns: list = None,addStrTechCol:bool=False)->pd.DataFrame:
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName)
-        directory_client = file_system_client.get_directory_client(directoryPath)
-        file_client= directory_client.get_file_client(sourceFileName)
+    def read_parquet_file(self, container_name: str, directory_path: str,file_name:str, columns: list = None,tech_columns:bool=False)->pd.DataFrame:
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
+        directory_client = file_system_client.get_directory_client(directory_path)
+        file_client= directory_client.get_file_client(file_name)
         download = file_client.download_file()
         download_bytes = download.readall()
         df = self.read_parquet_bytes(bytes=download_bytes,columns=columns)
-        if addStrTechCol:
-            df =  Utils.addTechColumns(df,containerName,directoryPath.replace("\\","/"),sourceFileName)
+        if tech_columns:
+            df =  Utils.addTechColumns(df,container_name,directory_path.replace("\\","/"),file_name)
         
         return df
         
         
     
-    def read_parquet_folder(self,containerName:str,directoryPath:str,includeSubfolders:list=None,columns:list = None,addStrTechCol:bool=False,recursive:bool=False) ->pd.DataFrame:
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName)
-        #directory_client = file_system_client.get_directory_client(directoryPath)
-        listFiles = file_system_client.get_paths(directoryPath,recursive)
+    def read_parquet_folder(self,container_name:str,directory_path:str,includeSubfolders:list=None,columns:list = None,tech_columns:bool=False,recursive:bool=False) ->pd.DataFrame:
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
+        #directory_client = file_system_client.get_directory_client(directory_path)
+        listFiles = file_system_client.get_paths(directory_path,recursive)
         df = pd.DataFrame()
         if listFiles:
             for i,r in enumerate(listFiles):
-                file = str(r.name).replace(directoryPath + "/","")
-                dfNew = self.read_parquet_file(containerName,directoryPath,file,columns,addStrTechCol)
+                file = str(r.name).replace(directory_path + "/","")
+                dfNew = self.read_parquet_file(container_name,directory_path,file,columns,tech_columns)
                 df = pd.concat([df, dfNew], axis=0, join="outer", ignore_index=True)
         return df
     
-    def delete_file(self,containerName : str,directoryPath : str,fileName:str,wait:bool=True):
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName)
+    def delete_file(self,container_name : str,directory_path : str,fileName:str,wait:bool=True):
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
         
-        if directoryPath== "":
+        if directory_path== "":
             file_client= file_system_client.get_file_client(fileName)
             if file_client.exists():
                 file_client.delete_file()
@@ -325,7 +325,7 @@ class DataLake(StorageAccountVirtualClass):
                         time.sleep(5)
                         checkIfExist = file_client.exists()
         else:
-            directory_client = file_system_client.get_directory_client(directoryPath)
+            directory_client = file_system_client.get_directory_client(directory_path)
             if directory_client.exists():
                 file_client= directory_client.get_file_client(fileName)
                 if file_client.exists():
@@ -340,9 +340,9 @@ class DataLake(StorageAccountVirtualClass):
                             checkIfExist = file_client.exists()
         
         
-    def delete_folder(self,containerName : str,directoryPath : str,wait:bool=True):
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName)
-        if directoryPath== "":
+    def delete_folder(self,container_name : str,directory_path : str,wait:bool=True):
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
+        if directory_path== "":
             files = file_system_client.get_paths()
             for file in files:
                 file.delete_file()
@@ -353,79 +353,79 @@ class DataLake(StorageAccountVirtualClass):
                     files = file_system_client.get_paths()      
         else:
                  
-            directory_client = file_system_client.get_directory_client(directoryPath)
+            directory_client = file_system_client.get_directory_client(directory_path)
             if directory_client.exists():
                 directory_client.delete_directory()
         
             if wait:
-                directory_client = file_system_client.get_directory_client(directoryPath)
+                directory_client = file_system_client.get_directory_client(directory_path)
                 checkIfExist=directory_client.exists()
                 while checkIfExist:
                     time.sleep(5)
-                    directory_client = file_system_client.get_directory_client(directoryPath)
+                    directory_client = file_system_client.get_directory_client(directory_path)
                     checkIfExist=directory_client.exists()
     
-    def file_exists(self, containerName : str,directoryPath : str,fileName:str):
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName)
+    def file_exists(self, container_name : str,directory_path : str,fileName:str):
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
         
-        if directoryPath== "":
+        if directory_path== "":
             file_client= file_system_client.get_file_client(fileName)
         else:
-            directory_client = file_system_client.get_directory_client(directoryPath)
+            directory_client = file_system_client.get_directory_client(directory_path)
             if directory_client.exists():
                 file_client= directory_client.get_file_client(fileName)
         return file_client.exists()
             
-    def folder_exists(self, containerName : str, directoryPath : str):
-        if directoryPath== "":
+    def folder_exists(self, container_name : str, directory_path : str):
+        if directory_path== "":
             return False       
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName)
-        directory_client = file_system_client.get_directory_client(directoryPath)
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
+        directory_client = file_system_client.get_directory_client(directory_path)
         return directory_client.exists()
                     
     
-    def move_file(self,containerName : str,directoryPath : str,fileName:str,newContainerName : str,newDirectoryPath : str,newFileName:str,isOverWrite :bool=True,isDeleteSourceFile:bool=False):
-        if not self.file_exists(containerName, directoryPath, fileName):
+    def move_file(self,container_name : str,directory_path : str,fileName:str,newcontainer_name : str,newdirectory_path : str,newFileName:str,isOverWrite :bool=True,isDeleteSourceFile:bool=False):
+        if not self.file_exists(container_name, directory_path, fileName):
             raise FileNotFoundError
-        self.save_binary_file(self.read_binary_file(containerName,directoryPath,fileName),newContainerName,newDirectoryPath,newFileName,isOverWrite)
+        self.save_binary_file(self.read_binary_file(container_name,directory_path,fileName),newcontainer_name,newdirectory_path,newFileName,isOverWrite)
         if isDeleteSourceFile:
-            self.delete_file(containerName ,directoryPath ,fileName)
+            self.delete_file(container_name ,directory_path ,fileName)
     
-    def ls_files(self,containerName : str, directoryPath : str, recursive:bool=False)->list:
-        if directoryPath=="":
-            directoryPath="/"
+    def ls_files(self,container_name : str, directory_path : str, recursive:bool=False)->list:
+        if directory_path=="":
+            directory_path="/"
         files = []
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName)
-        generator = file_system_client.get_paths(path=directoryPath, recursive=recursive)
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
+        generator = file_system_client.get_paths(path=directory_path, recursive=recursive)
         for file in generator:
             if file.is_directory==False:
                 files.append(file.name)
         
         return files
     
-    def move_folder(self,containerName : str,directoryPath : str,newContainerName : str,newDirectoryPath : str,isOverWrite :bool=True,isDeleteSourceFolder:bool=False)->bool:
-        if not self.folder_exists(containerName, directoryPath):
+    def move_folder(self,container_name : str,directory_path : str,newcontainer_name : str,newdirectory_path : str,isOverWrite :bool=True,isDeleteSourceFolder:bool=False)->bool:
+        if not self.folder_exists(container_name, directory_path):
             raise FileNotFoundError
-        listFiles = self.ls_files(containerName,directoryPath,True)
+        listFiles = self.ls_files(container_name,directory_path,True)
         for i in listFiles:
-            self.move_file(containerName,directoryPath,i,newContainerName,newDirectoryPath,i,isOverWrite,isDeleteSourceFolder)
+            self.move_file(container_name,directory_path,i,newcontainer_name,newdirectory_path,i,isOverWrite,isDeleteSourceFolder)
         return True
         
-    def renema_file(self,containerName : str,directoryPath : str,fileName:str,newFileName:str):
-        self.move_file(containerName,directoryPath,fileName,containerName,directoryPath,newFileName,False,True)
+    def renema_file(self,container_name : str,directory_path : str,fileName:str,newFileName:str):
+        self.move_file(container_name,directory_path,fileName,container_name,directory_path,newFileName,False,True)
     
-    def renema_folder(self,containerName : str,directoryPath : str,newDirectoryPath:str):
-        self.move_folder(containerName,directoryPath,containerName,newDirectoryPath,False,True)
+    def renema_folder(self,container_name : str,directory_path : str,newdirectory_path:str):
+        self.move_folder(container_name,directory_path,container_name,newdirectory_path,False,True)
         
-    def create_empty_file(self,containerName : str,directoryPath : str,fileName:str):
-        file_system_client = self.__service_client.get_file_system_client(file_system=containerName)
-        directory_client = file_system_client.get_directory_client(directoryPath)
+    def create_empty_file(self,container_name : str,directory_path : str,fileName:str):
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
+        directory_client = file_system_client.get_directory_client(directory_path)
         file_client= directory_client.get_file_client(fileName)
         file_client.create_file()
         file_client.upload_data('')
         
     def create_container(self,container_name : str,public_access:CONTAINER_ACCESS_TYPES=None):
-        super().create_container(self.__service_client, containerName,public_access)
+        super().create_container(self.__service_client, container_name,public_access)
         
-    def delete_container(self,containerName : str):
-        super().delete_container(self.__service_client, containerName)
+    def delete_container(self,container_name : str):
+        super().delete_container(self.__service_client, container_name)

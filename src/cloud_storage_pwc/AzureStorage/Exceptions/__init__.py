@@ -17,3 +17,9 @@ class BlobAlreadyExists(Exception):
     
 class BlobNotFound(Exception):
     """Raise for my specific kind of exception"""
+    
+class FolderDataNotFound(Exception):
+    """Raise for my specific kind of exception"""
+    
+class ExcelSheetNotFound(Exception):
+    """Raise for my specific kind of exception"""

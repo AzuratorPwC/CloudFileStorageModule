@@ -4,8 +4,11 @@ import polars as pl
 
 ENGINE_TYPES = Literal['pandas', 'polars']
 DELIMITER_TYPES = Literal[';', '^','~',',','\t','|','◇','◆',' ']
-QUOTING_TYPES = Literal['QUOTE_MINIMAL', 'QUOTE_ALL','QUOTE_NONNUMERIC','QUOTE_NONE']
+QUOTING_TYPES = Literal['"','|','~','^']
+ESCAPE_TYPES = Literal['\\','|','~','^']
+#QUOTING_TYPES = Literal['QUOTE_MINIMAL', 'QUOTE_ALL','QUOTE_NONNUMERIC','QUOTE_NONE']
 ENCODING_TYPES = Literal['UTF-8', 'UTF-16']
+COMPRESSION_TYPES = Literal['snappy', 'gzip', 'brotli']
 ORIENT_TYPES = Literal['records', 'columns']
 CONTAINER_ACCESS_TYPES = Literal['Container', 'Blob','Private']
 NAN_VALUES = ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan',

@@ -2,7 +2,7 @@ import abc
 from io import BytesIO
 import pandas as pd
 import polars as pl
-from ..Utils import CONTAINER_ACCESS_TYPES,ENCODING_TYPES,ENGINE_TYPES,ORIENT_TYPES,DELIMITER_TYPES,QUOTING_TYPES,NAN_VALUES
+from ..Utils import *
 
 
 
@@ -53,21 +53,33 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 hasattr(subclass, 'save_json_file') and
                 callable(subclass.save_json_file) and
                 hasattr(subclass, 'ls_files') and
-                callable(subclass.ls_files)
+                callable(subclass.ls_files) and
+                hasattr(subclass, 'delete_files_by_prefix') and
+                callable(subclass.delete_files_by_prefix)
                 or  NotImplemented)
 
+
+
+
     @classmethod
-    def read_csv_bytes(cls,bytes:bytes,engine:ENGINE_TYPES ='pandas',source_encoding:ENCODING_TYPES= "UTF-8", column_delimiter :DELIMITER_TYPES= ',',is_first_row_as_header :bool= False,skip_rows:int=0, skip_blank_lines = True,quoting:QUOTING_TYPES='QUOTE_NONE') ->pd.DataFrame:
+    def read_csv_bytes(cls,bytes:bytes,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8", delimiter :DELIMITER_TYPES= ',',is_first_row_as_header :bool= False,skip_rows:int=0, skip_blank_lines = True,quoting:QUOTING_TYPES=None) ->pd.DataFrame:
         """Class representing a StorageAccountVirtualClass"""
         if engine == 'pandas':
-            df = pd.read_csv(BytesIO(bytes),sep=column_delimiter,quoting=3,quotechar='"',engine="python",dtype='str',
-                header= 0 if is_first_row_as_header is True else None ,
-                encoding=source_encoding,skiprows=skip_rows,keep_default_na=False,
-                na_values=NAN_VALUES,skip_blank_lines=skip_blank_lines)
+            if quoting is not None:
+                df = pd.read_csv(BytesIO(bytes),sep=delimiter,quoting=1,quotechar=quoting,engine="python",dtype='str',
+                    header= 0 if is_first_row_as_header is True else None ,
+                    encoding=encoding,skiprows=skip_rows,keep_default_na=False,
+                    na_values=NAN_VALUES,skip_blank_lines=skip_blank_lines)
+            else:
+                df = pd.read_csv(BytesIO(bytes),sep=delimiter,engine="python",dtype='str',
+                    header= 0 if is_first_row_as_header is True else None ,
+                    encoding=encoding,skiprows=skip_rows,keep_default_na=False,
+                    na_values=NAN_VALUES,skip_blank_lines=skip_blank_lines)
+            
             
         elif engine =='polars':
-            df = pl.read_csv(BytesIO(bytes),separator=column_delimiter,has_header=is_first_row_as_header,encoding=source_encoding,
-                        skip_rows=skip_rows,null_values=NAN_VALUES,infer_schema_length=0)
+            df = pl.read_csv(BytesIO(bytes),separator=delimiter,has_header=is_first_row_as_header,encoding=encoding,
+                        skip_rows=skip_rows,null_values=NAN_VALUES,infer_schema_length=0,quote_char=quoting)
         return df
 
     def read_parquet_bytes(self,bytes:bytes,engine:ENGINE_TYPES ='pandas',columns:list=None) ->pd.DataFrame:
@@ -119,7 +131,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def save_binary_file(self, inputbytes:bytes,container_name : str,directory_path : str,file_name:str,source_encoding:ENCODING_TYPES = "UTF-8",is_overwrite :bool=True):
+    def save_binary_file(self, inputbytes:bytes,container_name : str,directory_path : str,file_name:str,encoding:ENCODING_TYPES = "UTF-8",is_overwrite :bool=True):
         """
         Save a binary file to the specified container in the cloud storage.
 
@@ -128,7 +140,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             container_name (str): The name of the container in the cloud storage.
             directory_path (str): The directory path within the container to save the file.
             file_name (str): The name of the file to be saved.
-            source_encoding (ENCODING_TYPES, optional): The encoding type of the input data.
+            encoding (ENCODING_TYPES, optional): The encoding type of the input data.
                 Defaults to "UTF-8".
             is_overwrite (bool, optional): Flag indicating whether to overwrite the file if it
                 already exists. Defaults to True.
@@ -151,7 +163,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def read_csv_file(self,container_name:str,directory_path:str,sourcefile_name:str,engine:ENGINE_TYPES = 'polars',source_encoding:ENCODING_TYPES = "UTF-8", column_delimiter:DELIMITER_TYPES = ',',is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines = True,tech_columns:bool=False):
+    def read_csv_file(self, container_name:str, directory_path:str, file_name:str,engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8",delimiter:DELIMITER_TYPES=',', is_first_row_as_header:bool=False,skip_rows:int=0, skip_blank_lines=True,quoting:QUOTING_TYPES=None, tech_columns:bool=False):
         """
         Read a CSV file from an Azure Blob Storage container and return the data as a DataFrame.
 
@@ -161,9 +173,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             sourcefile_name (str): The name of the CSV file to be read.
             engine (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars').
                 Defaults to 'polars'.
-            source_encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
+            encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
                 to "UTF-8".
-            column_delimiter (DELIMITER_TYPES, optional): The delimiter used in the CSV file.
+            delimiter (DELIMITER_TYPES, optional): The delimiter used in the CSV file.
                 Defaults to ','.
             is_first_row_as_header (bool, optional): Flag indicating whether the first row is
                 a header. Defaults to False.
@@ -180,23 +192,23 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',source_encoding:ENCODING_TYPES = "UTF-8", column_delimiter:DELIMITER_TYPES = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,tech_columns:bool=False,recursive:bool=False) ->pd.DataFrame:
+    def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8", delimiter:DELIMITER_TYPES = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:QUOTING_TYPES=None,tech_columns:bool=False,recursive:bool=False):
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def read_excel_file(self,container_name:str,directory_path:str,sourcefile_name:str,engine: ENGINE_TYPES ='polars',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets:list()=None,tech_columns:bool=False):
+    def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine: ENGINE_TYPES ='polars',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets:list=None,tech_columns:bool=False):
         """infor"""
         raise NotImplementedError
     
     
     @abc.abstractmethod
-    def save_dataframe_as_csv(self,df:[pd.DataFrame, pl.DataFrame],container_name : str,directory_path:str,file:str=None,partition_columns:list=None,source_encoding:ENCODING_TYPES= "UTF-8", column_delimiter:str = ";",is_first_row_as_header:bool = True,quoteChar:str=' ',quoting:['never', 'always', 'necessary']='never',escapeChar:str="\\", engine: ENGINE_TYPES ='polars'):
+    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:DELIMITER_TYPES = ";",is_first_row_as_header:bool = True,quoting:QUOTING_TYPES=None,escape:ESCAPE_TYPES=None, engine: ENGINE_TYPES ='polars'):
         """infor"""
         raise NotImplementedError
     
     @abc.abstractmethod
-    def save_dataframe_as_parquet(self,df:pd.DataFrame,container_name : str,directory_path:str,partition_columns:list=None,compression:str=None):
+    def save_dataframe_as_parquet(self,df,container_name : str,directory_path:str,engine: ENGINE_TYPES ='polars',partition_columns:list=None,compression:COMPRESSION_TYPES=None):
         """
         Saves a Pandas DataFrame as Parquet format in Azure Blob Storage.
 
@@ -328,6 +340,12 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
+    def delete_files_by_prefix(self,container_name : str,directory_path : str,file_prefix:str, recursive:bool=False,wait:bool=True):
+        """
+        Deletes files from Azure Blob Storage based on a prefix.
+        """
+        raise NotImplementedError
+    @abc.abstractmethod
     def delete_folder(self,container_name : str,directory_path : str,wait:bool=True):
         """
         Deletes a folder and its contents from Azure Blob Storage.
@@ -451,7 +469,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def save_json_file(self, df: [pd.DataFrame, pl.DataFrame], container_name: str, directory: str, file:str = None, engine: ENGINE_TYPES ='polars', orient:ORIENT_TYPES= 'records'):
+    def save_json_file(self, df, container_name: str, directory: str, file_name:str = None, engine: ENGINE_TYPES ='polars', orient:ORIENT_TYPES= 'records'):
         """
         Saves a Pandas or Polars DataFrame to a JSON file in Azure Blob Storage.
 
