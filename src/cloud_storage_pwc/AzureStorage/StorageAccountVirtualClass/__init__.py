@@ -40,12 +40,12 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 callable(subclass.move_folder) and
                 hasattr(subclass, 'renema_file') and
                 callable(subclass.renema_file) and
-                hasattr(subclass, 'renema_folder') and
-                callable(subclass.renema_folder) and
+                hasattr(subclass, 'rename_folder') and
+                callable(subclass.rename_folder) and
                 hasattr(subclass, 'read_excel_file') and
                 callable(subclass.read_excel_file) and
-                hasattr(subclass, 'save_listdataframe_as_xlsx') and
-                callable(subclass.save_listdataframe_as_xlsx) and
+                hasattr(subclass, 'save_dataframe_as_xlsx') and
+                callable(subclass.save_dataframe_as_xlsx) and
                 hasattr(subclass, 'create_empty_file') and
                 callable(subclass.create_empty_file) and
                 hasattr(subclass, 'check_is_dfs') and
@@ -62,32 +62,37 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
 
 
     @classmethod
-    def read_csv_bytes(cls,bytes:bytes,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8", delimiter :DELIMITER_TYPES= ',',is_first_row_as_header :bool= False,skip_rows:int=0, skip_blank_lines = True,quoting:QUOTING_TYPES=None) ->pd.DataFrame:
+    def read_csv_bytes(cls,input_bytes:bytes,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8", delimiter :DELIMITER_TYPES= ',',is_first_row_as_header :bool= False,skip_rows:int=0, skip_blank_lines = True,quoting:QUOTING_TYPES=None) ->pd.DataFrame:
         """Class representing a StorageAccountVirtualClass"""
         if engine == 'pandas':
             if quoting is not None:
-                df = pd.read_csv(BytesIO(bytes),sep=delimiter,quoting=1,quotechar=quoting,engine="python",dtype='str',
+                df = pd.read_csv(BytesIO(input_bytes),sep=delimiter,quoting=1,quotechar=quoting,engine="python",dtype='str',
                     header= 0 if is_first_row_as_header is True else None ,
                     encoding=encoding,skiprows=skip_rows,keep_default_na=False,
                     na_values=NAN_VALUES,skip_blank_lines=skip_blank_lines)
             else:
-                df = pd.read_csv(BytesIO(bytes),sep=delimiter,engine="python",dtype='str',
+                df = pd.read_csv(BytesIO(input_bytes),sep=delimiter,engine="python",dtype='str',
                     header= 0 if is_first_row_as_header is True else None ,
                     encoding=encoding,skiprows=skip_rows,keep_default_na=False,
                     na_values=NAN_VALUES,skip_blank_lines=skip_blank_lines)
-            
-            
+                        
+  
         elif engine =='polars':
-            df = pl.read_csv(BytesIO(bytes),separator=delimiter,has_header=is_first_row_as_header,encoding=encoding,
-                        skip_rows=skip_rows,null_values=NAN_VALUES,infer_schema_length=0,quote_char=quoting)
+            if quoting is not None:
+                df = pl.read_csv(BytesIO(input_bytes),separator=delimiter,has_header=is_first_row_as_header,encoding=encoding,
+                        skip_rows=skip_rows,null_values=NAN_VALUES,infer_schema_length=0,quote_char=quoting,)
+            else:
+                df = pl.read_csv(BytesIO(input_bytes),separator=delimiter,has_header=is_first_row_as_header,encoding=encoding,
+                        skip_rows=skip_rows,null_values=NAN_VALUES,infer_schema_length=0)
+        
         return df
 
-    def read_parquet_bytes(self,bytes:bytes,engine:ENGINE_TYPES ='pandas',columns:list=None) ->pd.DataFrame:
+    def read_parquet_bytes(self,input_bytes:bytes,engine:ENGINE_TYPES ='pandas',columns:list=None) ->pd.DataFrame:
         """Class representing a StorageAccountVirtualClass"""
         if engine =='pandas':
-            df = pd.read_parquet(BytesIO(bytes),'auto',columns)
+            df = pd.read_parquet(BytesIO(input_bytes),'auto',columns)
         elif engine =='polars':
-            df = pl.read_parquet(BytesIO(bytes),columns=columns)
+            df = pl.read_parquet(BytesIO(input_bytes),columns=columns)
         return df
     @abc.abstractmethod
     def create_container(self,container_name : str,public_access:CONTAINER_ACCESS_TYPES='Private'):
@@ -131,7 +136,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def save_binary_file(self, inputbytes:bytes,container_name : str,directory_path : str,file_name:str,encoding:ENCODING_TYPES = "UTF-8",is_overwrite :bool=True):
+    def save_binary_file(self, input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True):
         """
         Save a binary file to the specified container in the cloud storage.
 
@@ -148,7 +153,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def read_binary_file(self, container_name: str, directory_path: str, file_name: str):
+    def read_binary_file(self, container_name: str, directory_path: str, file_name: str)-> bytes:
         """
         Reads a binary file from the specified container, directory, and file name.
 
@@ -163,7 +168,10 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def read_csv_file(self, container_name:str, directory_path:str, file_name:str,engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8",delimiter:DELIMITER_TYPES=',', is_first_row_as_header:bool=False,skip_rows:int=0, skip_blank_lines=True,quoting:QUOTING_TYPES=None, tech_columns:bool=False):
+    def read_csv_file(self, container_name:str, directory_path:str, file_name:str,
+                      engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8",
+                      delimiter:DELIMITER_TYPES=',', is_first_row_as_header:bool=False,
+                      skip_rows:int=0, skip_blank_lines=True,quoting:QUOTING_TYPES=None, tech_columns:bool=False):
         """
         Read a CSV file from an Azure Blob Storage container and return the data as a DataFrame.
 
@@ -254,7 +262,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def save_listdataframe_as_xlsx(self,list_df:list, sheets:list, container_name : str,directory_path:str ,file_name:str,index=False,header=False):
+    def save_dataframe_as_xlsx(self,df,container_name : str,directory_path:str ,file_name:str,sheet_name:str,engine:ENGINE_TYPES ='polars',index=False,header=False):
         """
         Saves a list of Pandas DataFrames as separate sheets in an Excel file in Azure Blob Storage.
 
@@ -277,7 +285,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def read_parquet_file(self, container_name: str, directory_path: str,sourcefile_name:str, columns: list = None,tech_columns:bool=False)->pd.DataFrame:
+    def read_parquet_file(self, container_name: str, directory_path: str,file_name:str,engine:ENGINE_TYPES ='polars', columns: list = None,tech_columns:bool=False):
         """
         Reads a Parquet file from Azure Blob Storage and returns its content as a Pandas DataFrame.
 
@@ -298,7 +306,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def read_parquet_folder(self) ->pd.DataFrame:
+    def read_parquet_folder(self,container_name:str,directory_path:str,engine:ENGINE_TYPES ='polars',columns:list = None,tech_columns:bool=False,recursive:bool=False):
         """
         Reads multiple Parquet files from a folder in Azure Blob Storage and returns their content as a Pandas DataFrame.
 
@@ -365,7 +373,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def move_file(self,container_name : str,directory_path : str,file_name:str,new_container_name : str,new_directory_path : str,newfile_name:str,is_overwrite :bool=True,is_delete_source_folder:bool=False):
+    def move_file(self,container_name : str,directory_path : str,file_name:str,new_container_name : str,new_directory_path : str,is_overwrite :bool=True,is_delete_source_file:bool=False):
         """
         Moves a file from one location to another within Azure Blob Storage.
 
@@ -389,7 +397,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def move_folder(self,container_name : str,directory_path : str,new_container_name : str,new_directory_path : str,is_overwrite :bool=True,is_delete_source_folder:bool=False)->bool:
+    def move_folder(self,container_name : str,directory_path : str,new_container_name : str,new_directory_path : str,is_overwrite :bool=True,is_delete_source_folder:bool=False):
         """
         Moves all files from one folder to another within Azure Blob Storage.
 
@@ -431,7 +439,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def renema_folder(self,container_name : str,directory_path : str,newdirectory_path:str):
+    def rename_folder(self,container_name : str,directory_path : str,new_directory_path:str):
         """
         Renames a folder within a specified container in Azure Blob Storage.
 

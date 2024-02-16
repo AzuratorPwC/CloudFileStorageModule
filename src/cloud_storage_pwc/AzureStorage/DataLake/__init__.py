@@ -1,7 +1,8 @@
 
+from ast import main
 from ..StorageAccountVirtualClass import *
 
-from azure.storage.filedatalake import DataLakeServiceClient, ContentSettings
+from azure.storage.filedatalake import DataLakeServiceClient
 
 from azure.identity import DefaultAzureCredential
 from azure.identity import ClientSecretCredential
@@ -18,74 +19,102 @@ import polars as pl
 import time
 from datetime import datetime
 import csv
-from ..Utils import CONTAINER_ACCESS_TYPES,ENCODING_TYPES,ENGINE_TYPES,ORIENT_TYPES
+from ..Utils import *
+from ..Exceptions import *
+import logging
+from azure.core.exceptions import HttpResponseError,ResourceNotFoundError,ResourceExistsError
 
 class DataLake(StorageAccountVirtualClass):
  
-    def __init__(self, url:str,accessKey:str=None,tenantId:str=None,applicationId:str=None,applicationSecret:str=None):
+    def __init__(self, url:str, access_key:str=None, tenant_id:str=None, application_id:str=None,application_secret:str=None):
         super().__init__()
         try:
-            if accessKey is not None and tenantId is None and applicationId is None and applicationSecret is None: 
-                self.__service_client = DataLakeServiceClient(account_url=url, credential=accessKey)
-            elif accessKey is  None and tenantId is None and applicationId is None and applicationSecret is None: 
+            if access_key is not None and tenant_id is None and application_id is None and application_secret is None:
+                logging.info("DataLake-create by accesskey %s",url)
+                self.__service_client = DataLakeServiceClient(account_url=url, credential=access_key)
+            elif access_key is  None and tenant_id is None and application_id is None and application_secret is None: 
+                logging.info("DataLake-create by defaultazurecredential %s", url)
                 credential = DefaultAzureCredential()
                 self.__service_client = DataLakeServiceClient(account_url=url, credential=credential)
-            elif accessKey is  None and tenantId is not None and applicationId is not None and applicationSecret is not None:
+            elif access_key is  None and tenant_id is not None and application_id is not None and application_secret is not None:
+                logging.info("DataLake-create by clientsecretcredential %s", url)
                 token_credential = ClientSecretCredential(
-                tenantId, #self.active_directory_tenant_id,
-                applicationId, #self.active_directory_application_id,
-                applicationSecret #self.active_directory_application_secret
-                )
+                    tenant_id, application_id,application_secret)
                 self.__service_client = DataLakeServiceClient(account_url=url, credential=token_credential)
-        except Exception as e:
-            if "getaddrinfo failed" in str(e):
-                raise Exception(f"Warning: Storage account not found.")
-            else:
-                raise Exception(f"Blad logowania na {url}: {str(e)}")
-        
-
+            self.__service_client.get_service_properties()
+        except ResourceNotFoundError as e:
+            logging.error(f"Storage account {url} not found")
+            raise StorageAccountNotFound(f"Storage account {url} not found") from e
+        except HttpResponseError as e:
+            logging.error(f"Storage account {url} authorization error")
+            raise StorageAccountAuthenticationError(f"Storage account {url} authorization error") from e
         
     def check_is_dfs(self)->bool:
         return True
 
-    def save_binary_file(self, inputbytes:bytes,container_name : str,directory_path : str,fileName:str,sourceEncoding: ENCODING_TYPES = "UTF-8",isOverWrite :bool=True):
-        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)        
-        directory_client = file_system_client.get_directory_client(directory_path)
-        new_file_client = directory_client.create_file(fileName)
-        #content_settings = ContentSettings(content_encoding=sourceEncoding,content_type = "text/csv")
-        new_file_client.upload_data(bytes(inputbytes),overwrite=isOverWrite)
+    def save_binary_file(self,input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True):
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
+        
+        main_directory_client = file_system_client.get_directory_client("/")
+        if directory_path =="":
+            file_client = main_directory_client.get_file_client(file_name)
+        else:
+            subdir_client = main_directory_client.get_sub_directory_client(directory_path)
+            if subdir_client.exists() is False:
+                subdir_client.create_directory()
+            file_client = subdir_client.get_file_client(file_name)
+        #content_settings = ContentSettings(content_encoding=encoding,content_type = "text/csv")
+        file_client.upload_data(bytes(input_bytes),overwrite=is_overwrite)
     
-    def read_binary_file(self,container_name : str,directory_path : str,fileName:str)->bytes:
-        file_system_client = self.__service_client.get_file_system_client(file_system=container_name) 
-        directory_client = file_system_client.get_directory_client(directory_path)
-        file_client = directory_client.get_file_client(fileName)
+    def read_binary_file(self, container_name:str, directory_path:str, file_name:str)->bytes:
+        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
+        
+        main_directory_client = file_system_client.get_directory_client("/")
+        if directory_path =="":
+            file_client = main_directory_client.get_file_client(file_name)
+        else:
+            file_client = main_directory_client.get_sub_directory_client(directory_path).get_file_client(file_name)
+
         download = file_client.download_file()
         download_bytes = download.readall()
         return download_bytes
 
     
-    def read_csv_file(self,container_name:str,directory_path:str,file_name:str,engine: ENGINE_TYPES ='polars',sourceEncoding:ENCODING_TYPES = "UTF-8", columnDelimiter:str = ";",is_first_row_as_header:bool = False,skip_rows:int=0,skipBlankLines = True,tech_columns:bool=False):
-        file_system_client = self.__service_client.get_file_system_client(file_system=container_name) 
-        directory_client = file_system_client.get_directory_client(directory_path)
-        file_client = directory_client.get_file_client(file_name)
-        download = file_client.download_file()
-        download_bytes = download.readall()
-        df = self.read_csv_bytes(download_bytes,engine,sourceEncoding,columnDelimiter,is_first_row_as_header,skip_rows,skipBlankLines)
+    def read_csv_file(self, container_name:str, directory_path:str, file_name:str,engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8",delimiter:DELIMITER_TYPES=',', is_first_row_as_header:bool=False,skip_rows:int=0, skip_blank_lines=True,quoting:QUOTING_TYPES=None, tech_columns:bool=False):
+        
+        download_bytes = self.read_binary_file(container_name,directory_path,file_name)
+        df = self.read_csv_bytes(download_bytes, engine, encoding, delimiter,is_first_row_as_header, skip_rows, skip_blank_lines,quoting=quoting)
         
         if tech_columns:
-            df =  Utils.addTechColumns(df,container_name,directory_path.replace("\\","/"),file_name)
+            df =  add_tech_columns(df,container_name,directory_path.replace("\\","/"),file_name)
         return df
     
-    def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES ='polars',includeSubfolders:list=None,sourceEncoding :ENCODING_TYPES = "UTF-8", columnDelimiter:str = ";",is_first_row_as_header:bool = False,skip_rows:int=0,skipBlankLines=True,tech_columns:bool=False,recursive:bool=False) ->pd.DataFrame:
-        file_system_client = self.__service_client.get_file_system_client(file_system=container_name) 
-        listFiles = file_system_client.get_paths(directory_path,recursive)
-        df = pd.DataFrame()
-        if listFiles:
-            for i,r in enumerate(listFiles):
-                file = r.name.replace(directory_path + "/","")
-                dfNew = self.read_csv_file(container_name,directory_path,file,engine,sourceEncoding,columnDelimiter,is_first_row_as_header,skip_rows,skipBlankLines,tech_columns)
-                df = pd.concat([df, dfNew], axis=0, join="outer", ignore_index=True)
-        return df
+    def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8", delimiter:DELIMITER_TYPES = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:QUOTING_TYPES=None,tech_columns:bool=False,recursive:bool=False):
+        
+        try:
+            list_files = self.ls_files(container_name,directory_path,recursive)
+            #print(list_files)
+            df = None
+            if list_files:
+                for f in list_files:
+                    file = f.split("/")[-1]
+                    df_new = self.read_csv_file(container_name,directory_path.removesuffix(f"/{file}"),file,engine,encoding,delimiter,is_first_row_as_header,skip_rows,skip_blank_lines,quoting,tech_columns)
+                    if engine=='pandas':
+                        if df is None:
+                            df = df_new
+                        else:
+                            df = pd.concat([df, df_new], axis=0, join="outer", ignore_index=True)
+                    elif engine =='polars':
+                        if df is None:
+                            df = df_new
+                        else:
+                            df = pl.concat([df, df_new])
+            else:
+                raise FolderDataNotFound(f"Folder data {directory_path} not found in container {container_name}")
+            return df
+        except Exception as e:
+            raise e
+        
     
     def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine: ENGINE_TYPES ='polars',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets:list=None,tech_columns:bool=False):
         file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
@@ -135,7 +164,7 @@ class DataLake(StorageAccountVirtualClass):
         new_client_parq.upload_data(buf.getvalue(),overwrite=True)
     
 
-    def save_dataframe_as_csv(self,df:[pd.DataFrame, pl.DataFrame],container_name : str,directory_path:str,file:str=None,partitionCols:list=None,sourceEncoding:ENCODING_TYPES= "UTF-8", columnDelimiter:str = ";",is_first_row_as_header:bool = True,quoteChar:str=' ',quoting:['never', 'always', 'necessary']='never',escapeChar:str="\\", engine: ENGINE_TYPES ='polars'):
+    def save_dataframe_as_csv(self,df:[pd.DataFrame, pl.DataFrame],container_name : str,directory_path:str,file:str=None,partitionCols:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:str = ";",is_first_row_as_header:bool = True,quoteChar:str=' ',quoting:['never', 'always', 'necessary']='never',escapeChar:str="\\", engine: ENGINE_TYPES ='polars'):
         
         quoting_dict = {'never':csv.QUOTE_NONE, 'always':csv.QUOTE_ALL, 'necessary':csv.QUOTE_MINIMAL}
         
@@ -181,7 +210,7 @@ class DataLake(StorageAccountVirtualClass):
                     if not(df_part.empty):
                         buf = BytesIO()
                         df_reset = df_part.reset_index(drop=True)
-                        df_reset.to_csv(buf,index=False, sep=columnDelimiter,encoding=sourceEncoding,header=is_first_row_as_header,quotechar=quoteChar, quoting=quoting_dict[quoting],escapechar=escapeChar)
+                        df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoteChar, quoting=quoting_dict[quoting],escapechar=escapeChar)
                         buf.seek(0)
                         self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.csv",True)
 
@@ -190,7 +219,7 @@ class DataLake(StorageAccountVirtualClass):
                     if not(df_part.is_empty()):
                         buf = BytesIO()
                         df_reset = df_part
-                        df_reset.write_csv(buf, separator=columnDelimiter, has_header=is_first_row_as_header, quote_char='"', quote_style=quoting)
+                        df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header, quote_char='"', quote_style=quoting)
                         buf.seek(0)
                         self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" +"/".join(partitionPath),f"{uuid.uuid4().hex}.csv",True)
                                                 
@@ -200,10 +229,10 @@ class DataLake(StorageAccountVirtualClass):
             
             if isinstance(df, pd.DataFrame):
                 df_reset = df.reset_index(drop=True)
-                df_reset.to_csv(buf,index=False, sep=columnDelimiter,encoding=sourceEncoding,header=is_first_row_as_header,quotechar=quoteChar, quoting=quoting_dict[quoting],escapechar=escapeChar)
+                df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoteChar, quoting=quoting_dict[quoting],escapechar=escapeChar)
             else:
                 df_reset = df
-                df_reset.write_csv(buf, separator=columnDelimiter, has_header=is_first_row_as_header, quote_style=quoting)
+                df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header, quote_style=quoting)
     
             buf.seek(0)
 
@@ -271,7 +300,7 @@ class DataLake(StorageAccountVirtualClass):
             filename = f"{uuid.uuid4().hex}.json"
         self.save_binary_file(buf.getvalue(), container_name ,directory,filename,True)
 
-    def save_listdataframe_as_xlsx(self,list_df:list, list_sheetnames:list, container_name : str,directory_path:str ,fileName:str,index=False,header=False):
+    def save_dataframe_as_xlsx(self,df,container_name : str,directory_path:str ,file_name:str,sheet_name:str,engine:ENGINE_TYPES ='polars',index=False,header=False):
         # for multiple dfs
         buf = BytesIO() 
         with pd.ExcelWriter(buf, engine = 'openpyxl') as writer:
@@ -302,13 +331,13 @@ class DataLake(StorageAccountVirtualClass):
     def read_parquet_folder(self,container_name:str,directory_path:str,includeSubfolders:list=None,columns:list = None,tech_columns:bool=False,recursive:bool=False) ->pd.DataFrame:
         file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
         #directory_client = file_system_client.get_directory_client(directory_path)
-        listFiles = file_system_client.get_paths(directory_path,recursive)
+        list_files = file_system_client.get_paths(directory_path,recursive)
         df = pd.DataFrame()
-        if listFiles:
-            for i,r in enumerate(listFiles):
+        if list_files:
+            for i,r in enumerate(list_files):
                 file = str(r.name).replace(directory_path + "/","")
-                dfNew = self.read_parquet_file(container_name,directory_path,file,columns,tech_columns)
-                df = pd.concat([df, dfNew], axis=0, join="outer", ignore_index=True)
+                df_new = self.read_parquet_file(container_name,directory_path,file,columns,tech_columns)
+                df = pd.concat([df, df_new], axis=0, join="outer", ignore_index=True)
         return df
     
     def delete_file(self,container_name : str,directory_path : str,fileName:str,wait:bool=True):
@@ -338,7 +367,8 @@ class DataLake(StorageAccountVirtualClass):
                             time.sleep(5)
                             file_client= directory_client.get_file_client(fileName)
                             checkIfExist = file_client.exists()
-        
+    def delete_files_by_prefix(self,container_name : str,directory_path : str,file_prefix:str, recursive:bool=False,wait:bool=True):
+        pass
         
     def delete_folder(self,container_name : str,directory_path : str,wait:bool=True):
         file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
@@ -391,31 +421,41 @@ class DataLake(StorageAccountVirtualClass):
         if isDeleteSourceFile:
             self.delete_file(container_name ,directory_path ,fileName)
     
-    def ls_files(self,container_name : str, directory_path : str, recursive:bool=False)->list:
-        if directory_path=="":
-            directory_path="/"
-        files = []
-        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
-        generator = file_system_client.get_paths(path=directory_path, recursive=recursive)
-        for file in generator:
-            if file.is_directory==False:
-                files.append(file.name)
+    def ls_files(self, container_name:str, directory_path:str, recursive:bool=False)->list:
+        try:
+            file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
+            if file_system_client.exists() is False:
+                raise ContainerNotFound(f"Container {container_name} not found")
+
+            if directory_path=="":
+                directory_path="/"
+            files = []
+            generator = file_system_client.get_paths(path=directory_path, recursive=recursive)
+            for file in generator:
+                if file.is_directory is False:
+                    files.append(file.name)
+            return files
+        except ContainerNotFound as e:
+            raise e
+        except Exception as e:
+            raise Exception(f"Error listing files in container {container_name}") from e
         
-        return files
+        
     
     def move_folder(self,container_name : str,directory_path : str,newcontainer_name : str,newdirectory_path : str,isOverWrite :bool=True,isDeleteSourceFolder:bool=False)->bool:
         if not self.folder_exists(container_name, directory_path):
             raise FileNotFoundError
-        listFiles = self.ls_files(container_name,directory_path,True)
-        for i in listFiles:
+        list_files = self.ls_files(container_name,directory_path,True)
+        for i in list_files:
             self.move_file(container_name,directory_path,i,newcontainer_name,newdirectory_path,i,isOverWrite,isDeleteSourceFolder)
         return True
         
     def renema_file(self,container_name : str,directory_path : str,fileName:str,newFileName:str):
         self.move_file(container_name,directory_path,fileName,container_name,directory_path,newFileName,False,True)
     
-    def renema_folder(self,container_name : str,directory_path : str,newdirectory_path:str):
-        self.move_folder(container_name,directory_path,container_name,newdirectory_path,False,True)
+    def rename_folder(self,container_name : str,directory_path : str,new_directory_path:str):
+        pass
+        #self.move_folder(container_name,directory_path,container_name,newdirectory_path,False,True)
         
     def create_empty_file(self,container_name : str,directory_path : str,fileName:str):
         file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
@@ -424,8 +464,23 @@ class DataLake(StorageAccountVirtualClass):
         file_client.create_file()
         file_client.upload_data('')
         
-    def create_container(self,container_name : str,public_access:CONTAINER_ACCESS_TYPES=None):
-        super().create_container(self.__service_client, container_name,public_access)
+    def create_container(self,container_name : str,public_access:CONTAINER_ACCESS_TYPES='Private'):
+        try:
+            container_client = self.__service_client.get_file_system_client(file_system=container_name)
+            if not container_client.exists():
+                if public_access == "Private":
+                    public_access = None
+                self.__service_client.create_file_system(file_system=container_name,public_access=public_access)
+        except ResourceExistsError as e:
+            raise ContainerAccessTypes(f"Container access {public_access} is not allowe in {container_name}") from e
+        except Exception as e:
+            raise Exception(f"Error creating container {container_name}") from e
+
         
     def delete_container(self,container_name : str):
-        super().delete_container(self.__service_client, container_name)
+        try:
+            container_client = self.__service_client.get_file_system_client(file_system=container_name)
+            if container_client.exists():
+                container_client.delete_file_system()
+        except Exception as e:
+            raise Exception(f"Error deleting container {container_name}") from e

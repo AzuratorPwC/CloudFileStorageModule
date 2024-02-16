@@ -12,6 +12,7 @@ import logging
 import numpy as np
 import pandas as pd
 import polars as pl
+from  openpyxl import load_workbook
 from azure.storage.blob import BlobServiceClient
 from azure.identity import ClientSecretCredential
 from azure.identity import DefaultAzureCredential
@@ -107,9 +108,7 @@ class Blob(StorageAccountVirtualClass):
     
 
 
-    def save_binary_file(self, inputbytes:bytes, container_name:str, directory_path:str,
-                         file_name:str,encoding:ENCODING_TYPES="UTF-8",
-                         is_overwrite:bool=True):
+    def save_binary_file(self, input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True):
         try:
             container_client = self.__service_client.get_container_client(container=container_name)
             if container_client.exists() is False:
@@ -117,7 +116,7 @@ class Blob(StorageAccountVirtualClass):
             if not directory_path == '' and not directory_path.endswith('/'):
                 directory_path += '/'
             new_blob_client = container_client.get_blob_client(directory_path + file_name)
-            new_blob_client.upload_blob(bytes(inputbytes), overwrite=is_overwrite, encoding=encoding)
+            new_blob_client.upload_blob(bytes(input_bytes), overwrite=is_overwrite)
         except ContainerNotFound as e:
             raise e
         except ResourceExistsError as e:
@@ -447,24 +446,56 @@ class Blob(StorageAccountVirtualClass):
         self.save_binary_file(buf.getvalue(), container_name ,directory,file_name_check,True)
 
     
-    def save_listdataframe_as_xlsx(self,list_df:list, sheets:list, container_name : str,directory_path:str ,file_name:str,engine: ENGINE_TYPES ='polars',index=False,header=False):
-        # for multiple dfs
-        buf = BytesIO()
-        with pd.ExcelWriter(buf, engine = 'openpyxl') as writer:
-            for df, sheet_name in zip(list_df,sheets):
-                df.to_excel(writer, index = index, header = header, sheet_name = sheet_name)
-        buf.seek(0)
-        self.save_binary_file(buf.getvalue(),container_name ,directory_path,f"{file_name}.xlsx",True)
-    
-    
-    def read_parquet_file(self, container_name: str, directory_path: str,sourcefile_name:str, columns: list = None,tech_columns:bool=False)->pd.DataFrame:
+    def save_dataframe_as_xlsx(self,df,container_name : str,directory_path:str ,file_name:str,sheet_name:str,engine:ENGINE_TYPES ='polars',index=False,header=False):
+        if isinstance(df,pd.DataFrame):
+            if df.empty:
+                return
+            #df = df.replace(r'\\n', '', regex=True)
+            if engine != 'pandas':
+                df = pl.from_pandas(df)
+
+        elif isinstance(df,pl.DataFrame):
+            if df.is_empty():
+                return
+            #df = df.with_columns(pl.col(pl.Utf8).str.replace_all(r"\\n", ""))
+            if engine != 'polars':
+                df = df.to_pandas(use_pyarrow_extension_array=True)
+                
+        check_if_file_exist = self.__service_client.get_container_client(container=container_name).get_blob_client(directory_path +"/" + file_name).exists()
+        
+        if isinstance(df,pd.DataFrame):
+            if check_if_file_exist:
+                excel_buf =self.read_binary_file(container_name,directory_path,file_name)
+                excel_buf=BytesIO(excel_buf)
+                with pd.ExcelWriter(excel_buf, engine='openpyxl',mode="a") as writer:
+                    df.to_excel(writer, sheet_name=sheet_name, index= index, header=header)
+            else:
+                excel_buf = BytesIO()
+                with pd.ExcelWriter(excel_buf, engine = 'openpyxl') as writer:
+                    df.to_excel(writer, index = index, header = header, sheet_name = sheet_name)
+        elif isinstance(df,pl.DataFrame):
+            if check_if_file_exist:
+                excel_buf=self.read_binary_file(container_name,directory_path,file_name)
+                excel_buf=BytesIO(excel_buf)
+                
+                df.write_excel(excel_buf, worksheet=sheet_name)
+            else:
+                excel_buf = BytesIO()
+                df.write_excel(excel_buf, worksheet=sheet_name)
+                
+        excel_buf.seek(0)
+        #excel_buf.close()
+        self.save_binary_file(excel_buf.getvalue(),container_name ,directory_path,file_name,True)
+
+            
+    def read_parquet_file(self, container_name: str, directory_path: str,file_name:str,engine:ENGINE_TYPES ='polars', columns: list = None,tech_columns:bool=False):
         
         if not directory_path == '' and not directory_path.endswith('/'):
-            path = directory_path +"/"+sourcefile_name
+            path = directory_path +"/"+file_name
         else:
-            path = directory_path + sourcefile_name
-        download_bytes = self.read_binary_file(container_name,directory_path,sourcefile_name)
-        df = self.read_parquet_bytes(bytes=download_bytes,columns=columns)
+            path = directory_path + file_name
+        download_bytes = self.read_binary_file(container_name,directory_path,file_name)
+        df = self.read_parquet_bytes(input_bytes=download_bytes,columns=columns,engine=engine)
         
         if tech_columns:
             path = path.replace("\\","/")
@@ -472,23 +503,24 @@ class Blob(StorageAccountVirtualClass):
 
         return df
     
-    def read_parquet_folder(self,container_name:str,directory_path:str,folders:list=None,columns:list = None,tech_columns:bool=False,recursive:bool=False) ->pd.DataFrame:
+    def read_parquet_folder(self,container_name:str,directory_path:str,engine:ENGINE_TYPES ='polars',columns:list = None,tech_columns:bool=False,recursive:bool=False):
 
         list_files = self.ls_files(container_name,directory_path, recursive=recursive)
-        if  folders:
-            new_list=[]
-            for i in folders:
-                for j in list_files:
-                    if  j.startswith(i.replace("/","\\")):
-                        new_list.append(j)
-                list_files = list(set(list_files) - set(new_list))
-            list_files = new_list
             
         df = pd.DataFrame()
         if list_files:
             for f in list_files:
-                df_new = self.read_parquet_file(container_name,directory_path,f,columns,tech_columns)
-                df = pd.concat([df, df_new], axis=0, join="outer", ignore_index=True)
+                df_new = self.read_parquet_file(container_name,directory_path,f,engine,columns, tech_columns)
+                if engine=='pandas':
+                    if df is None:
+                        df = df_new
+                    else:
+                        df = pd.concat([df, df_new], axis=0, join="outer", ignore_index=True)
+                elif engine =='polars':
+                    if df is None:
+                        df = df_new
+                    else:
+                        df = pl.concat([df, df_new])
         return df
     
     def delete_file(self,container_name : str,directory_path : str,file_name:str,wait:bool=True):
@@ -545,7 +577,7 @@ class Blob(StorageAccountVirtualClass):
     def delete_folder(self,container_name : str,directory_path : str,wait:bool=True):
         try:
             container_client = self.__service_client.get_container_client(container=container_name)
-            if container_client.exists() == False:
+            if container_client.exists() is False:
                 raise ContainerNotFound(f"Container {container_name} not found")
         
             list_files = self.ls_files(container_name,directory_path,True)
@@ -564,7 +596,7 @@ class Blob(StorageAccountVirtualClass):
         except Exception as e:
             raise Exception(f"Error deleting folder {directory_path} in container {container_name}") from e
         
-    def move_file(self,container_name : str,directory_path : str,file_name:str,new_container_name : str,new_directory_path : str,newfile_name:str,is_overwrite :bool=True,isDeleteSourceFile:bool=False):
+    def move_file(self,container_name : str,directory_path : str,file_name:str,new_container_name : str,new_directory_path : str,is_overwrite :bool=True,is_delete_source_file:bool=False):
         try:
             container_client = self.__service_client.get_container_client(container=container_name)
             if container_client.exists() is False:
@@ -573,8 +605,8 @@ class Blob(StorageAccountVirtualClass):
             if container_client.exists() is False:
                 raise ContainerNotFound(f"Container target {container_name} not found")
 
-            self.save_binary_file(self.read_binary_file(container_name,directory_path,file_name),new_container_name,new_directory_path,newfile_name,is_overwrite)
-            if isDeleteSourceFile:
+            self.save_binary_file(self.read_binary_file(container_name,directory_path,file_name),new_container_name,new_directory_path,file_name,is_overwrite)
+            if is_delete_source_file:
                 self.delete_file(container_name ,directory_path ,file_name)
         except ContainerNotFound as e:
             raise e
@@ -595,7 +627,7 @@ class Blob(StorageAccountVirtualClass):
             list_files = self.ls_files(container_name,directory_path,True)
 
             for i in list_files:
-                self.move_file(container_name,directory_path,i,new_container_name,new_directory_path,i,True,is_delete_source_folder)
+                self.move_file(container_name,directory_path,i,new_container_name,new_directory_path,is_overwrite,is_delete_source_folder)
         except ContainerNotFound as e:
             raise e
         except Exception as e:
@@ -605,22 +637,28 @@ class Blob(StorageAccountVirtualClass):
     def renema_file(self,container_name : str,directory_path : str,file_name:str,newfile_name:str):
         try:
             container_client = self.__service_client.get_container_client(container=container_name)
-            if container_client.exists() == False:
-                raise ContainerNotFound(f"Container {container_name} not found")
-            self.move_file(container_name,directory_path,file_name,container_name,directory_path,newfile_name,True,True) 
+            if container_client.exists() is False:
+                raise ContainerNotFound(f"Container source {container_name} not found")
+
+            self.save_binary_file(self.read_binary_file(container_name,directory_path,file_name),container_name,directory_path,newfile_name,False)
+            self.delete_file(container_name ,directory_path ,file_name)
         except ContainerNotFound as e:
             raise e
         except ResourceNotFoundError as e:
             raise BlobNotFound(f"File {file_name} not found in container {container_name}") from e
         except Exception as e:
-            raise Exception(f"Error moving file {file_name} in container {container_name}") from e
-    
-    def renema_folder(self,container_name : str,directory_path : str,new_directory_path:str):
+            raise Exception(f"Error moving folder {directory_path} in container {container_name}") from e
+  
+    def rename_folder(self,container_name : str,directory_path : str,new_directory_path:str):
         try:
             container_client = self.__service_client.get_container_client(container=container_name)
-            if container_client.exists() == False:
-                raise ContainerNotFound(f"Container {container_name} not found")
-            self.move_folder(container_name,directory_path,container_name,new_directory_path,True,True)
+            if container_client.exists() is False:
+                raise ContainerNotFound(f"Container source {container_name} not found")
+        
+            list_files = self.ls_files(container_name,directory_path,True)
+
+            for i in list_files:
+                self.move_file(container_name,directory_path,i,container_name,new_directory_path,False,True)
         except ContainerNotFound as e:
             raise e
         except Exception as e:
@@ -659,4 +697,3 @@ class Blob(StorageAccountVirtualClass):
                 container_client.delete_container()
         except Exception as e:
             raise Exception(f"Error deleting container {container_name}") from e
-            
