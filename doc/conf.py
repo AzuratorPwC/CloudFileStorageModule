@@ -6,14 +6,18 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-#import pathlib
+import pathlib
 import sys
-#sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix()+"/src/pkg_cloud_storage/__init__.py")
+import os
+#sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix()+"/src/cloud_storage_pwc/__init__.py")
 #sys.path.append("C:/Users/astarosta001/repos/BASDATA/StorageAccountPythonLib/src/lumache.py")
 #from cloud_storage_pwc import create_cloudstorage_reference
 #sys.path.append('../../src/cloud_storage_pwc')
-import pathlib
-sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
+
+#from src.cloud_storage_pwc import azure_storage
+#sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
+#sys.path.append('/home/workspaces/CloudFileStorageModule/src')
+sys.path.insert(0, os.path.abspath('..'))
 
 project = 'cloud-storage'
 copyright = '2022, artur'

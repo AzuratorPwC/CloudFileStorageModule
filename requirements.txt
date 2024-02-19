@@ -10,3 +10,5 @@ openpyxl
 pytest
 pytest-dependency
 fastexcel
+sphinx
+sphinx-rtd-theme

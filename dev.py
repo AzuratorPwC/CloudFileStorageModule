@@ -1,10 +1,14 @@
 
 
-from src.cloud_storage_pwc import azure_storage
+from src import azure_storage
 #from azure.storage.filedatalake import DataLakeServiceClient
 #aaa= DataLakeServiceClient(account_url="https://datakeeee2.dfs.core.windows.net/", credential="xzwfPjunJa4vz+j7h/2NLDHgQ+BKKWF1zHmLb308zQAbznpQXiCU6MVmlJ0J9HMsL0P+04fYQ7NU+AStmGGBrg==")
 
-#fs=aaa.get_file_system_client("aaggg")
+#b=aaa.get_file_system_client("aaggg").get_directory_client("/").get_sub_directory_client("folder1").get_file_client("file2.txt").exists() #.get_file_client("file1.txt").rename_file("aaaa.b")
+#print(b)
+
+
+#fs=aaa.get_file_system_client("aaggg").get_directory_client("/b").rename_directory
 
 #bbb=fs.get_directory_client("/")
 #t=bbb.get_sub_directory_client("folder1/fol4/eeee").create_directory()
@@ -12,19 +16,31 @@ from src.cloud_storage_pwc import azure_storage
 #logging.debug('This will get logged')
 
 aa=azure_storage("datakeeee2","xzwfPjunJa4vz+j7h/2NLDHgQ+BKKWF1zHmLb308zQAbznpQXiCU6MVmlJ0J9HMsL0P+04fYQ7NU+AStmGGBrg==")
-
-aa.delete_container("aaggg")
-#aa.create_container("aaggg")
+#bbb=aa.read_csv_folder("aaggg","source",delimiter=';',is_first_row_as_header=True,engine="pandas",tech_columns=True)
+#print(bbb)
+aa.create_container("aaggg11","Private")
+#aa.save_dataframe_as_parquet(bbb,"aaggg","folder11",engine="polars",compression="gzip",partition_columns=["col1"])
+#aa.save_dataframe_as_xlsx(bbb,"aaggg","folderxxx",'pliczek111.xlsx',sheet_name="Sheet1",engine="polars")
+#df1=aa.read_parquet_folder("aaggg","folder11",recursive=True,engine="polars")
+#print(df1)
+#aa.rename_folder("aaggg","folder1","ggggfol222")
+#aa.delete_container("aaggg")
+#aa.create_container("aaggg","Private")
 #vvv=aa.ls_files("aaggg","folder1",False)
-
+#aa.delete_folder("aaggg","ggggfol222")
 #df=aa.read_csv_folder("aaggg","folder1/folder2/fol3",delimiter=";",engine="polars",is_first_row_as_header=True,recursive=True)
 #print(df)
 
 
-#aa.create_empty_file("aaggg","folder1","file1.txt")
+#aa.create_empty_file("aaggg","","file1.txt")
 #aa.create_empty_file("aaggg","folder1","file2.txt")
-#aa.create_empty_file("aaggg","folder2","file3.txt")
+#aa.create_empty_file("aaggg","folder1/folder2","file3.txt")
 #files = aa.ls_files("aaggg","folder1",True)
+#aa.delete_container("aaggg")
+
+#aa.rename_file("aaggg","folder1","file2.txt","aaaaa.txt")
+
+
 #files = [f  for f in files if f.split("/")[-1].startswith("")]
 #print(files)
 #aa.delete_files_by_prefix("aaggg","source","p")

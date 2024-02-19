@@ -3,7 +3,24 @@ from io import BytesIO
 import pandas as pd
 import polars as pl
 from ..Utils import *
-
+from ..Exceptions import *
+import pyarrow as pa
+from io import BytesIO
+import pyarrow.parquet as pq
+import uuid
+import os
+import numpy as np 
+import pandas as pd
+from openpyxl import Workbook
+from itertools import product
+import polars as pl
+import time
+from datetime import datetime
+import csv
+from ..Utils import *
+from ..Exceptions import *
+import logging
+from azure.core.exceptions import HttpResponseError,ResourceNotFoundError,ResourceExistsError
 
 
 
@@ -16,20 +33,6 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 callable(subclass.save_binary_file) and
                 hasattr(subclass, 'read_binary_file') and
                 callable(subclass.read_binary_file) and
-                hasattr(subclass, 'read_csv_file') and
-                callable(subclass.read_csv_file) and
-                hasattr(subclass, 'read_csv_folder') and
-                callable(subclass.read_csv_folder) and
-                hasattr(subclass, 'save_dataframe_as_parquet') and 
-                callable(subclass.save_dataframe_as_parquet) and
-                hasattr(subclass, 'save_dataframe_as_csv') and
-                callable(subclass.save_dataframe_as_csv) and
-                hasattr(subclass, 'save_dataframe_as_parqarrow') and
-                callable(subclass.save_dataframe_as_parqarrow) and
-                hasattr(subclass, 'read_parquet_file') and
-                callable(subclass.read_parquet_file) and
-                hasattr(subclass, 'read_parquet_folder') and
-                callable(subclass.read_parquet_folder) and
                 hasattr(subclass, 'delete_file') and
                 callable(subclass.delete_file) and
                 hasattr(subclass, 'delete_folder') and
@@ -38,20 +41,14 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 callable(subclass.move_file) and
                 hasattr(subclass, 'move_folder') and
                 callable(subclass.move_folder) and
-                hasattr(subclass, 'renema_file') and
-                callable(subclass.renema_file) and
+                hasattr(subclass, 'rename_file') and
+                callable(subclass.rename_file) and
                 hasattr(subclass, 'rename_folder') and
                 callable(subclass.rename_folder) and
-                hasattr(subclass, 'read_excel_file') and
-                callable(subclass.read_excel_file) and
-                hasattr(subclass, 'save_dataframe_as_xlsx') and
-                callable(subclass.save_dataframe_as_xlsx) and
                 hasattr(subclass, 'create_empty_file') and
                 callable(subclass.create_empty_file) and
                 hasattr(subclass, 'check_is_dfs') and
                 callable(subclass.check_is_dfs) and
-                hasattr(subclass, 'save_json_file') and
-                callable(subclass.save_json_file) and
                 hasattr(subclass, 'ls_files') and
                 callable(subclass.ls_files) and
                 hasattr(subclass, 'delete_files_by_prefix') and
@@ -167,7 +164,6 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
 
-    @abc.abstractmethod
     def read_csv_file(self, container_name:str, directory_path:str, file_name:str,
                       engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8",
                       delimiter:DELIMITER_TYPES=',', is_first_row_as_header:bool=False,
@@ -196,26 +192,166 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
 
         Returns:
             DataFrame: A DataFrame containing the data from the CSV file.
-        """
-        raise NotImplementedError
+        """  
+        download_bytes = self.read_binary_file(container_name,directory_path,file_name)
+        df = self.read_csv_bytes(download_bytes, engine, encoding, delimiter,is_first_row_as_header, skip_rows, skip_blank_lines,quoting=quoting)
+        
+        if tech_columns:
+            df =  add_tech_columns(df,container_name,directory_path.replace("\\","/"),file_name)
+        return df
     
-    @abc.abstractmethod
     def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8", delimiter:DELIMITER_TYPES = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:QUOTING_TYPES=None,tech_columns:bool=False,recursive:bool=False):
-        """infor"""
-        raise NotImplementedError
+        try:
+            list_files = self.ls_files(container_name,directory_path, recursive=recursive)
+            df = None
+            if list_files:
+                for f in list_files:
+                    df_new = self.read_csv_file(container_name,directory_path,str(f).removeprefix(directory_path),engine,encoding,delimiter,is_first_row_as_header,skip_rows,skip_blank_lines,quoting, tech_columns)
+                    if engine=='pandas':
+                        if df is None:
+                            df = df_new
+                        else:
+                            df = pd.concat([df, df_new], axis=0, join="outer", ignore_index=True)
+                    elif engine =='polars':
+                        if df is None:
+                            df = df_new
+                        else:
+                            df = pl.concat([df, df_new])
+            else:
+                raise FolderDataNotFound(f"Folder data {directory_path} not found in container {container_name}")
+            return df
+        except Exception as e:
+            raise e
     
-    @abc.abstractmethod
     def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine: ENGINE_TYPES ='polars',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets:list=None,tech_columns:bool=False):
-        """infor"""
-        raise NotImplementedError
+        try:
+            download_bytes = self.read_binary_file(container_name,directory_path,file_name)
+            
+            if file_name.endswith(".xls"):
+                workbook = pd.ExcelFile(BytesIO(download_bytes), engine='xlrd')
+            else:
+                workbook = pd.ExcelFile(BytesIO(download_bytes))
+            workbook_sheetnames = workbook.sheet_names
+            if bool(sheets):
+                if  set(sheets).issubset(workbook_sheetnames) is False:
+                    raise ExcelSheetNotFound(f"Sheet {sheets} not found in file {file_name}")
+                else:
+                    load_sheets = sheets
+            else:
+                load_sheets = workbook_sheetnames
+            
+            
+            list_of_dff = []
+            if is_first_row_as_header:
+                is_first_row_as_header=0
+            else:
+                is_first_row_as_header=None
+            for sheet in load_sheets:
+                if engine == 'pandas':
+                    dff = pd.read_excel(workbook, sheet_name = sheet,skiprows=skip_rows, index_col = None, header = is_first_row_as_header)
+                elif engine == 'polars':
+                    dff = pl.read_excel(BytesIO(download_bytes),engine="calamine",sheet_name=sheet
+                            #read_options={"has_header": is_first_row_as_header,"skip_rows":skip_rows}
+                            )
+                    
+                if tech_columns:
+                    dff =  add_tech_columns(dff,container_name,directory_path.replace("\\","/"),file_name)
+            
+                list_of_dff.append(DataFromExcel(dff,sheet))
+            if(len(list_of_dff)==1):
+                return list_of_dff[0]
+            else:
+                return list_of_dff
+        except Exception as e:
+            raise e
     
     
-    @abc.abstractmethod
     def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:DELIMITER_TYPES = ";",is_first_row_as_header:bool = True,quoting:QUOTING_TYPES=None,escape:ESCAPE_TYPES=None, engine: ENGINE_TYPES ='polars'):
-        """infor"""
-        raise NotImplementedError
+        
+        
+        
+        if isinstance(df, pd.DataFrame):
+            if df.empty:
+                return
+            df = df.replace(r'\\n', '', regex=True)
+            if engine != 'pandas':
+                df = pl.from_pandas(df)
+
+        elif isinstance(df, pl.DataFrame):
+            if df.is_empty():
+                return
+            df = df.with_columns(pl.col(pl.Utf8).str.replace_all(r"\\n", ""))
+            if engine != 'polars':
+                df = df.to_pandas(use_pyarrow_extension_array=True)
+
+                        
+        if partition_columns:
+            partition_dict = {}
+            for x in partition_columns:
+                partition_dict[x] = df[x].unique()
     
-    @abc.abstractmethod
+            partition_groups = [dict(zip(partition_dict.keys(),items)) for items in product(*partition_dict.values())]
+            partition_groups = [d for d in partition_groups if np.nan not in d.values()]
+
+            for d in partition_groups:
+                df_part = df
+                partition_path=[]
+
+                if isinstance(df_part, pd.DataFrame):
+                    for d1 in d:
+                        df_part = df_part[df_part[d1] == d[d1]]
+                        partition_path.append(f"{d1}={str(d[d1])}")
+                    
+                    if not(df_part.empty):
+                        buf = BytesIO()
+                        df_reset = df_part.reset_index(drop=True)
+                        if quoting is not None:
+                            df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=1,escapechar=escape)
+                        else:
+                            df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape)
+                        buf.seek(0)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/" +"/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
+
+
+                if isinstance(df_part, pl.DataFrame):
+                    for d1 in d:
+                        df_part = df_part.filter(df_part[d1] == d[d1])
+                        partition_path.append(f"{d1}={str(d[d1])}")
+                                
+                    if not(df_part.is_empty()):
+                        buf = BytesIO()
+                        df_reset = df_part
+                        if quoting is not None:
+                            df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header, quote_char=quoting, quote_style='always')
+                        else:
+                            df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_style='never')
+                        buf.seek(0)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/" + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
+                                                
+        else:
+            buf = BytesIO()
+            
+            if isinstance(df, pd.DataFrame):
+                df.reset_index(drop=True,inplace=True)
+                if quoting is not None:
+                    df.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=1,escapechar=escape)
+                else:
+                    df.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape)
+            else:
+                if quoting is not None:
+                    df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_char=quoting,  quote_style="always")
+                else:
+                    df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header, quote_style="never")
+                
+    
+            buf.seek(0)
+
+            if file_name:
+                file_name_check = file_name
+            else:
+                file_name_check  = f"{uuid.uuid4().hex}.csv"
+            self.save_binary_file(buf.getvalue(),container_name ,directory_path,file_name_check,True)
+    
     def save_dataframe_as_parquet(self,df,container_name : str,directory_path:str,engine: ENGINE_TYPES ='polars',partition_columns:list=None,compression:COMPRESSION_TYPES=None):
         """
         Saves a Pandas DataFrame as Parquet format in Azure Blob Storage.
@@ -235,34 +371,70 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             ValueError: If the compression method is not valid.
             ResourceNotFoundError: If the specified container or directory does not exist.
             StorageErrorException: If there is an issue with the storage service.
-        """
-        raise NotImplementedError
+        """        
+        if isinstance(df, pd.DataFrame):
+            if df.empty:
+                return
+            #df = df.replace(r'\\n', '', regex=True)
+            if engine != 'pandas':
+                df = pl.from_pandas(df)
+
+        elif isinstance(df, pl.DataFrame):
+            if df.is_empty():
+                return
+            #df = df.with_columns(pl.col(pl.Utf8).str.replace_all(r"\\n", ""))
+            if engine != 'polars':
+                df = df.to_pandas(use_pyarrow_extension_array=True)
+            
+        #if  not(df.empty):
+        #    df = df.replace('\n', ' ', regex=True)
+        if partition_columns:
+            partition_dict = {}
+            for x in partition_columns:
+                partition_dict[x] = df[x].unique()
     
-    @abc.abstractmethod
-    def save_dataframe_as_parqarrow(self,df:pd.DataFrame,container_name : str,directory_path:str,partition_columns:list=None,compression:str=None):
-        """
-        Saves a Pandas DataFrame as Parquet Arrow format in Azure Blob Storage.
+            partition_groups = [dict(zip(partition_dict.keys(),items)) for items in product(*partition_dict.values())]
+            partition_groups = [d for d in partition_groups if np.nan not in d.values()   ]
+            
+            for d in partition_groups:
+                df_part = df
+                partition_path=[]
+            
+            
+                if isinstance(df_part, pd.DataFrame):
+                    for d1 in d:
+                        df_part = df_part[df_part[d1] == d[d1]]
+                        partition_path.append(f"{d1}={str(d[d1])}")
+                    
+                    if not(df_part.empty):
+                        buf = BytesIO()
+                        df_part.to_parquet(buf,allow_truncated_timestamps=True, use_deprecated_int96_timestamps=True,compression=compression)
+                        buf.seek(0)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" +"/".join(partition_path),f"{uuid.uuid4().hex}.parquet",True)
 
-        Args:
-            df (pd.DataFrame): The DataFrame to be saved.
-            container_name (str): The name of the container in Azure Blob Storage.
-            directory_path (str): The path of the directory within the container.
-            partition_columns (list, optional): A list of columns to be used for partitioning the data. Defaults to None.
-            compression (str, optional): The compression method for the Parquet file ('NONE', 'SNAPPY', 'GZIP', 'BROTLI', 'LZ4', 'ZSTD').
-                Defaults to None.
-
-        Returns:
-            None
-
-        Raises:
-            ValueError: If the compression method is not valid.
-            ResourceNotFoundError: If the specified container or directory does not exist.
-            StorageErrorException: If there is an issue with the storage service.
-        """   
-        raise NotImplementedError
+                if isinstance(df_part, pl.DataFrame):
+                    for d1 in d:
+                        df_part = df_part.filter(df_part[d1] == d[d1])
+                        partition_path.append(f"{d1}={str(d[d1])}")
+                                
+                    if not(df_part.is_empty()):
+                        buf = BytesIO()
+                        df_part.write_parquet(buf,compression=compression)
+                        buf.seek(0)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
+        else:
+            buf = BytesIO()
+            if isinstance(df, pd.DataFrame):
+                df_reset = df.reset_index(drop=True)
+                df_reset.to_parquet(buf,allow_truncated_timestamps=True, use_deprecated_int96_timestamps=True,compression=compression)
+            else:
+                df_reset = df
+                df.write_parquet(buf,compression=compression)
+            buf.seek(0)
+            self.save_binary_file(buf.getvalue(),container_name ,directory_path,f"{uuid.uuid4().hex}.parquet",True)
     
-    @abc.abstractmethod
-    def save_dataframe_as_xlsx(self,df,container_name : str,directory_path:str ,file_name:str,sheet_name:str,engine:ENGINE_TYPES ='polars',index=False,header=False):
+    
+    def save_dataframe_as_xlsx(self, df,container_name : str,directory_path:str ,file_name:str,sheet_name:str,engine:ENGINE_TYPES ='polars',index=False,header=False):
         """
         Saves a list of Pandas DataFrames as separate sheets in an Excel file in Azure Blob Storage.
 
@@ -282,10 +454,47 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             ResourceNotFoundError: If the specified container or directory does not exist.
             StorageErrorException: If there is an issue with the storage service.
         """
-        raise NotImplementedError
+        if isinstance(df,pd.DataFrame):
+            if df.empty:
+                return
+            #df = df.replace(r'\\n', '', regex=True)
+            if engine != 'pandas':
+                df = pl.from_pandas(df)
+
+        elif isinstance(df,pl.DataFrame):
+            if df.is_empty():
+                return
+            #df = df.with_columns(pl.col(pl.Utf8).str.replace_all(r"\\n", ""))
+            if engine != 'polars':
+                df = df.to_pandas(use_pyarrow_extension_array=True)
+        #check_if_file_exist = self.__service_client.get_container_client(container=container_name).get_blob_client(directory_path +"/" + file_name).exists()
+        check_if_file_exist = False
+
+        if isinstance(df,pd.DataFrame):
+            if check_if_file_exist:
+                excel_buf =self.read_binary_file(container_name,directory_path,file_name)
+                excel_buf=BytesIO(excel_buf)
+                with pd.ExcelWriter(excel_buf, engine='openpyxl',mode="a") as writer:
+                    df.to_excel(writer, sheet_name=sheet_name, index= index, header=header)
+            else:
+                excel_buf = BytesIO()
+                with pd.ExcelWriter(excel_buf, engine = 'openpyxl') as writer:
+                    df.to_excel(writer, index = index, header = header, sheet_name = sheet_name)
+        elif isinstance(df,pl.DataFrame):
+            if check_if_file_exist:
+                excel_buf=self.read_binary_file(container_name,directory_path,file_name)
+                excel_buf=BytesIO(excel_buf)    
+                df.write_excel(excel_buf, worksheet=sheet_name)
+            else:
+                excel_buf = BytesIO()
+                df.write_excel(excel_buf, worksheet=sheet_name)
+                
+        excel_buf.seek(0)
+        #excel_buf.close()
+        self.save_binary_file(excel_buf.getvalue(),container_name ,directory_path,file_name,True)
     
-    @abc.abstractmethod
     def read_parquet_file(self, container_name: str, directory_path: str,file_name:str,engine:ENGINE_TYPES ='polars', columns: list = None,tech_columns:bool=False):
+
         """
         Reads a Parquet file from Azure Blob Storage and returns its content as a Pandas DataFrame.
 
@@ -303,9 +512,14 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             ResourceNotFoundError: If the specified container, directory, or file does not exist.
             StorageErrorException: If there is an issue with the storage service.
         """
-        raise NotImplementedError
+        download_bytes = self.read_binary_file(container_name,directory_path,file_name)
+        df = self.read_parquet_bytes(input_bytes=download_bytes,columns=columns,engine=engine)
+        
+        if tech_columns:
+            df =  add_tech_columns(df,container_name,directory_path.replace("\\","/"),file_name)
+
+        return df
     
-    @abc.abstractmethod
     def read_parquet_folder(self,container_name:str,directory_path:str,engine:ENGINE_TYPES ='polars',columns:list = None,tech_columns:bool=False,recursive:bool=False):
         """
         Reads multiple Parquet files from a folder in Azure Blob Storage and returns their content as a Pandas DataFrame.
@@ -324,8 +538,23 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Raises:
             ResourceNotFoundError: If the specified container or directory does not exist.
             StorageErrorException: If there is an issue with the storage service.
-        """
-        raise NotImplementedError
+        """    
+        list_files = self.ls_files(container_name,directory_path, recursive=recursive)
+        df = None
+        if list_files:
+            for f in list_files:
+                df_new = self.read_parquet_file(container_name,directory_path,f.removeprefix(directory_path),engine,columns, tech_columns)
+                if engine=='pandas':
+                    if df is None:
+                        df = df_new
+                    else:
+                        df = pd.concat([df, df_new], axis=0, join="outer", ignore_index=True)
+                elif engine =='polars':
+                    if df is None:
+                        df = df_new
+                    else:
+                        df = pl.concat([df, df_new])
+        return df
     
     @abc.abstractmethod
     def delete_file(self,container_name : str,directory_path : str,file_name:str,wait:bool=True):
@@ -419,7 +648,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def renema_file(self,container_name : str,directory_path : str,file_name:str,newfile_name:str):
+    def rename_file(self,container_name : str,directory_path : str,file_name:str,newfile_name:str):
         """
         Renames a file within a specified container in Azure Blob Storage.
 
@@ -476,7 +705,6 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
     
-    @abc.abstractmethod
     def save_json_file(self, df, container_name: str, directory: str, file_name:str = None, engine: ENGINE_TYPES ='polars', orient:ORIENT_TYPES= 'records'):
         """
         Saves a Pandas or Polars DataFrame to a JSON file in Azure Blob Storage.
@@ -497,7 +725,33 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             ResourceNotFoundError: If the specified container or directory does not exist.
             StorageErrorException: If there is an issue with the storage service.
         """
-        raise NotImplementedError
+        if isinstance(df,pd.DataFrame):
+            if df.empty:
+                return
+            #df = df.replace(r'\\n', '', regex=True)
+            if engine != 'pandas':
+                df = pl.from_pandas(df)
+
+        elif isinstance(df,pl.DataFrame):
+            if df.is_empty():
+                return
+            #df = df.with_columns(pl.col(pl.Utf8).str.replace_all(r"\\n", ""))
+            if engine != 'polars':
+                df = df.to_pandas(use_pyarrow_extension_array=True)
+
+        buf = BytesIO()    
+        
+        if isinstance(df, pd.DataFrame):
+            df.to_json(buf, orient=orient,lines=True)
+        elif isinstance(df, pl.DataFrame):
+            df.write_json(buf, row_oriented=(orient=='records'), pretty=True)
+
+        if file_name:
+            file_name_check = file_name
+        else:
+            file_name_check = f"{uuid.uuid4().hex}.json"
+        buf.seek(0)
+        self.save_binary_file(buf.getvalue(), container_name ,directory,file_name_check,True)
     
     @abc.abstractmethod
     def ls_files(self,container_name : str, directory_path : str, recursive:bool=False):
