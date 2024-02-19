@@ -1,4 +1,4 @@
 API Referencedcd scdscdcdcd 
 =====
 
-.. autofunction:: src.azure_storage
+.. autofunction:: cloud_storage_pwc.azure_storage
