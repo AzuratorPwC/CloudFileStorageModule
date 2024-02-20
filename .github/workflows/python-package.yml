@@ -83,8 +83,8 @@ jobs:
         index-servers=PwCDataLibs_dev1
         [PwCDataLibs_dev1]
         repository=https://pkgs.dev.azure.com/$azdo_org_name/_packaging/$azdo_artifacts_feed_name/pypi/upload
-        username=artur.starostapwc.com
-        password=uzxu5aabca73gzmwjvf5er4qrlalgmtczx6rkgdazttseymrmdoa
+        username=artur.starosta%40pwc.com
+        password=qi7emad377anl23ggalb5lfaudiyfxfjuwmvrlx75okbayz4hhia
         EOF
 
     - name: Publish Python package by twine
