@@ -11,8 +11,8 @@ on:
     branches: [ "main" ]
 
 env:
-  azdo_artifacts_feed_name: DevFiles
-  azdo_org_name: Ciech/397c480e-cb0f-474e-b6d3-110a6180d540
+  azdo_artifacts_feed_name: PWCDataLibs
+  azdo_org_name: BASDATA/bd61f679-2c80-40cb-9e82-9e6bea9f511f
 
 jobs:
   build:
@@ -65,17 +65,17 @@ jobs:
       with:
         path: ./dist/*.whl
 
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    #- name: Azure Login
+    #  uses: azure/login@v1
+    #  with:
+    #    creds: ${{ secrets.AZURE_CREDENTIALS }}
 
     - name: Setup Python package feed
       run: |
-        access_token=$(az account get-access-token | jq .accessToken -r)
+        access_token=artur.starosta%40pwc.com:uzxu5aabca73gzmwjvf5er4qrlalgmtczx6rkgdazttseymrmdoa  #$(az account get-access-token | jq .accessToken -r)
 
         # setup pip auth
-        echo "PIP_INDEX_URL=https://:$access_token@pkgs.dev.azure.com/$azdo_org_name/_packaging/$azdo_artifacts_feed_name/pypi/simple/" >> $GITHUB_ENV
+        echo "PIP_INDEX_URL=https://$access_token@pkgs.dev.azure.com/$azdo_org_name/_packaging/$azdo_artifacts_feed_name/pypi/simple/" >> $GITHUB_ENV
 
         # setup twine auth
         cat > ~/.pypirc <<EOF
