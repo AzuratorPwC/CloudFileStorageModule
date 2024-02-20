@@ -5,11 +5,11 @@ azure-storage-file-datalake
 azure-storage-blob
 pyarrow
 xlsxwriter
-ipykernel
+#ipykernel
 polars
 openpyxl
-pytest
-pytest-dependency
+#pytest
+#pytest-dependency
 fastexcel
-sphinx
-sphinx-rtd-theme
+#sphinx
+#sphinx-rtd-theme
