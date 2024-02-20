@@ -11,8 +11,8 @@ on:
     branches: [ "main" ]
 
 env:
-  azdo_artifacts_feed_name: PwCDataLibs_dev1
-  azdo_org_name: BASDATA/bd61f679-2c80-40cb-9e82-9e6bea9f511f
+  azdo_artifacts_feed_name: DevFiles
+  azdo_org_name: Ciech/397c480e-cb0f-474e-b6d3-110a6180d540 #BASDATA/bd61f679-2c80-40cb-9e82-9e6bea9f511f
 
 jobs:
   build:
@@ -80,14 +80,14 @@ jobs:
         # setup twine auth
         cat > ~/.pypirc <<EOF
         [distutils]
-        index-servers=PwCDataLibs_dev1
-        [PwCDataLibs_dev1]
+        index-servers=DevFiles
+        [DevFiles]
         repository=https://pkgs.dev.azure.com/$azdo_org_name/_packaging/$azdo_artifacts_feed_name/pypi/upload
-        username=artur.starosta%40pwc.com
-        password=qi7emad377anl23ggalb5lfaudiyfxfjuwmvrlx75okbayz4hhia
+        username=Artur.Starosta.external%40ciechgroup.com
+        password=mjfi2kr5k2zu7kp2j7owd37s5g3grlsh4oth2uozoohjwoonezta
         EOF
 
     - name: Publish Python package by twine
       run: |
         # need to install twine in advance
-        twine upload -r $azdo_artifacts_feed_name --config-file ~/.pypirc  dist/*.whl 
+        twine upload -r $azdo_artifacts_feed_name  dist/*.whl 
