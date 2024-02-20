@@ -83,7 +83,6 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             else:
                 df = pl.read_csv(BytesIO(input_bytes),separator=delimiter,has_header=is_first_row_as_header,encoding=encoding,
                         skip_rows=skip_rows,null_values=NAN_VALUES,infer_schema_length=0)
-        
         return df
 
     def read_parquet_bytes(self,input_bytes:bytes,engine:ENGINE_TYPES ='pandas',columns:list=None) ->pd.DataFrame:

@@ -94,8 +94,6 @@ class Blob(StorageAccountVirtualClass):
             return files
         except ContainerNotFound as e:
             raise e
-        except Exception as e:
-            raise Exception(f"Error listing files in container {container_name}") from e
 
     def file_exists(self, container_name : str,directory_path : str,file_name:str)->bool:
         container_client = self.__service_client.get_container_client(container=container_name)
@@ -135,25 +133,20 @@ class Blob(StorageAccountVirtualClass):
             BlobNotFound: If the specified file does not exist in the container.
             Exception: If there is an error reading the file.
         """
-        try:
-            container_client = self.__service_client.get_container_client(container=container_name)
-            if container_client.exists() is False:
-                raise ContainerNotFound(f"Container {container_name} not found")
-            if not directory_path == '' and not directory_path.endswith('/'):
-                directory_path += '/'
+        container_client = self.__service_client.get_container_client(container=container_name)
+        if container_client.exists() is False:
+            raise ContainerNotFound(f"Container {container_name} not found")
+        if not directory_path == '' and not directory_path.endswith('/'):
+            directory_path += '/'
 
-            path = directory_path + file_name
-            blob_client = container_client.get_blob_client(path)
+        path = directory_path + file_name
+        blob_client = container_client.get_blob_client(path)
+        if blob_client.exists():
             download = blob_client.download_blob()
             download_bytes = download.readall()
             return download_bytes
-        except ContainerNotFound as e:
-            raise e
-        except ResourceNotFoundError as e:
-            raise BlobNotFound(f"File {file_name} not found in container {container_name}") from e
-        except Exception as e:
-            raise Exception(f"Error reading file {file_name} in container {container_name}") from e
-    
+        else:
+            raise BlobNotFound(f"File {file_name} not found in container {container_name}")    
 
 
     def save_binary_file(self, input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True):
@@ -165,26 +158,22 @@ class Blob(StorageAccountVirtualClass):
                 directory_path += '/'
             new_blob_client = container_client.get_blob_client(directory_path + file_name)
             new_blob_client.upload_blob(bytes(input_bytes), overwrite=is_overwrite)
-        except ContainerNotFound as e:
-            raise e
         except ResourceExistsError as e:
             raise BlobAlreadyExists(f"File {file_name} already exists") from e
-        except Exception as e:
-            raise Exception(f"Error saving file {file_name} in container {container_name}") from e
-
 
 
     def delete_file(self,container_name : str,directory_path : str,file_name:str,wait:bool=True):
-        try:
-            container_client = self.__service_client.get_container_client(container=container_name)
-            if container_client.exists() is False:
-                raise ContainerNotFound(f"Container {container_name} not found")
-            if directory_path =="" or directory_path is None:
-                path=file_name
-            else:
-                path = "/".join( (directory_path,file_name))
-            blob_client = container_client.get_blob_client(path)
+        container_client = self.__service_client.get_container_client(container=container_name)
+        if container_client.exists() is False:
+            raise ContainerNotFound(f"Container {container_name} not found")
+        if directory_path =="" or directory_path is None:
+            path=file_name
+        else:
+            path = "/".join( (directory_path,file_name))
+        blob_client = container_client.get_blob_client(path)
+        if blob_client.exists():
             blob_client.delete_blob(delete_snapshots="include")
+        
             if wait:
                 time.sleep(1)
                 blob_client = container_client.get_blob_client(path)
@@ -193,59 +182,43 @@ class Blob(StorageAccountVirtualClass):
                     time.sleep(1)
                     blob_client = container_client.get_blob_client(path)
                     check_if_exist = blob_client.exists()
-        except ResourceNotFoundError as e:
-            raise BlobNotFound(f"File {file_name} not found in container {container_name}") from e
-        except ContainerNotFound as e:
-            raise e
-        except Exception as e:
-            raise Exception(f"Error deleting file {file_name} in container {container_name}") from e
-
+                    
     def delete_files_by_prefix(self,container_name : str,directory_path : str,file_prefix:str, recursive:bool=False,wait:bool=True):
-        try:
-            container_client = self.__service_client.get_container_client(container=container_name)
-            if container_client.exists() is False:
-                raise ContainerNotFound(f"Container {container_name} not found")
+        container_client = self.__service_client.get_container_client(container=container_name)
+        if container_client.exists() is False:
+            raise ContainerNotFound(f"Container {container_name} not found")
 
+        files_exists = self.ls_files(container_name,directory_path,recursive)
+        files = [f for f in files_exists if f.split("/")[-1].startswith(file_prefix)]
+        for f in files:
+            blob_client = container_client.get_blob_client(directory_path+"/"+f)
+            blob_client.delete_blob(delete_snapshots="include")
+        if wait and files:
             files_exists = self.ls_files(container_name,directory_path,recursive)
             files = [f for f in files_exists if f.split("/")[-1].startswith(file_prefix)]
-            for f in files:
-                blob_client = container_client.get_blob_client(directory_path+"/"+f)
-                blob_client.delete_blob(delete_snapshots="include")
-            if wait and files:
+            time.sleep(1)
+            while files:
                 time.sleep(1)
                 files_exists = self.ls_files(container_name,directory_path,recursive)
                 files = [f for f in files_exists if f.split("/")[-1].startswith(file_prefix)]
-                while files:
-                    time.sleep(1)
-                    files_exists = self.ls_files(container_name,directory_path,recursive)
-                    files = [f for f in files_exists if f.split("/")[-1].startswith(file_prefix)]
-        except ContainerNotFound as e:
-            raise e
-        except Exception as e:
-            raise Exception(f"Error deleting files with prefix {file_prefix} in container {container_name}") from e
         
     def delete_folder(self,container_name : str,directory_path : str,wait:bool=True):
-        try:
-            container_client = self.__service_client.get_container_client(container=container_name)
-            if container_client.exists() is False:
-                raise ContainerNotFound(f"Container {container_name} not found")
+        container_client = self.__service_client.get_container_client(container=container_name)
+        if container_client.exists() is False:
+            raise ContainerNotFound(f"Container {container_name} not found")
         
+        list_files = self.ls_files(container_name,directory_path,True)
+        for f in list_files:
+            path = directory_path + "/" + f.replace("\\","/")
+            self.delete_file(container_name,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
+        
+        if wait and len(list_files)>0:
+            time.sleep(2)
             list_files = self.ls_files(container_name,directory_path,True)
-            for f in list_files:
-                path = directory_path + "/" + f.replace("\\","/")
-                self.delete_file(container_name,path[0:path.rfind("/")],path[path.rfind("/")+1:len(path)])
-        
-            if wait and len(list_files)>0:
+            while len(list_files)>0:
                 time.sleep(2)
                 list_files = self.ls_files(container_name,directory_path,True)
-                while len(list_files)>0:
-                    time.sleep(2)
-                    list_files = self.ls_files(container_name,directory_path,True)
-        except ContainerNotFound as e:
-            raise e
-        except Exception as e:
-            raise Exception(f"Error deleting folder {directory_path} in container {container_name}") from e
-        
+                        
     def move_file(self,container_name : str,directory_path : str,file_name:str,new_container_name : str,new_directory_path : str,is_overwrite :bool=True,is_delete_source_file:bool=False):
         try:
             container_client = self.__service_client.get_container_client(container=container_name)
