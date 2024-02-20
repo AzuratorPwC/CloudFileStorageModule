@@ -1,4 +1,4 @@
-numpy==1.23.3
+numpy==1.23.2
 pandas==2.2.0
 azure-identity
 azure-storage-file-datalake
