@@ -90,4 +90,4 @@ jobs:
     - name: Publish Python package by twine
       run: |
         # need to install twine in advance
-        twine upload -r $azdo_artifacts_feed_name dist/*.whl
+        twine upload -r $azdo_artifacts_feed_name --config-file ~/.pypirc  dist/*.whl 
