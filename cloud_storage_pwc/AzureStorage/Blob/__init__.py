@@ -97,6 +97,26 @@ class Blob(StorageAccountVirtualClass):
         except Exception as e:
             raise Exception(f"Error listing files in container {container_name}") from e
 
+    def file_exists(self, container_name : str,directory_path : str,file_name:str)->bool:
+        container_client = self.__service_client.get_container_client(container=container_name)
+        if container_client.exists() is False:
+            raise ContainerNotFound(f"Container {container_name} not found")
+        if not directory_path == '' and not directory_path.endswith('/'):
+            directory_path += '/'
+            
+        path = directory_path + file_name
+        blob_client = container_client.get_blob_client(path)
+        
+        return blob_client.exists()
+          
+    def folder_exists(self, container_name : str, directory_path : str)->bool:
+        
+        files = self.ls_files(container_name,directory_path,False)
+        if files:
+            return True
+        else:
+            return False
+
 
     def read_binary_file(self, container_name: str, directory_path: str, file_name: str) -> bytes:
         """

@@ -197,7 +197,7 @@ class DataLake(StorageAccountVirtualClass):
         except Exception as e:
             raise Exception(f"Error listing files in container {container_name}") from e
     
-    def file_exists(self, container_name : str,directory_path : str,file_name:str):
+    def file_exists(self, container_name : str,directory_path : str,file_name:str)->bool:
         
         file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
         if file_system_client.exists() is False:
@@ -209,7 +209,7 @@ class DataLake(StorageAccountVirtualClass):
 
         return main_directory.get_file_client(file_name).exists()
             
-    def folder_exists(self, container_name : str, directory_path : str):
+    def folder_exists(self, container_name : str, directory_path : str)->bool:
         
         file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
         if file_system_client.exists() is False:
@@ -324,7 +324,7 @@ class DataLake(StorageAccountVirtualClass):
         
     def create_container(self,container_name : str,public_access:CONTAINER_ACCESS_TYPES ='Private'):
         try:
-            container_client = self.__service_client.get_file_system_client(file_system=container_name).get_file_client("aaa")
+            container_client = self.__service_client.get_file_system_client(file_system=container_name)
             if not container_client.exists():
                 if public_access == "Private":
                     public_access_ = None

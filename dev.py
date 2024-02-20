@@ -1,6 +1,6 @@
 
 
-from src import azure_storage
+from cloud_storage_pwc import azure_storage
 #from azure.storage.filedatalake import DataLakeServiceClient
 #aaa= DataLakeServiceClient(account_url="https://datakeeee2.dfs.core.windows.net/", credential="xzwfPjunJa4vz+j7h/2NLDHgQ+BKKWF1zHmLb308zQAbznpQXiCU6MVmlJ0J9HMsL0P+04fYQ7NU+AStmGGBrg==")
 
@@ -15,10 +15,17 @@ from src import azure_storage
 #print(t)
 #logging.debug('This will get logged')
 
-aa=azure_storage("datakeeee2","xzwfPjunJa4vz+j7h/2NLDHgQ+BKKWF1zHmLb308zQAbznpQXiCU6MVmlJ0J9HMsL0P+04fYQ7NU+AStmGGBrg==")
+aa=azure_storage("mystorageairflowdev","IdepCBLsltZ+1uLFOxk9jmqhnxMUziioFFODu6OCtQ/BjLBGnDVDftgEFACPKZ8kJIAfdTSLsEhe+AStk4KOMg==")
 #bbb=aa.read_csv_folder("aaggg","source",delimiter=';',is_first_row_as_header=True,engine="pandas",tech_columns=True)
-#print(bbb)
-aa.create_container("aaggg11","Private")
+#bb=aa.read_parquet_folder("aaggg","folder10",engine="pandas")
+v=aa.file_exists("foldercheck1","folder2","file1.txt")
+print(v)
+#aa.save_dataframe_as_csv(bb,"aaggg","newfol22","table1",delimiter=';',is_first_row_as_header=True,quoting="\"",engine="polars",partition_columns=["col1"])
+
+#aa.save_dataframe_as_parquet(bb,"aaggg","newfvf9999",engine="pandas",partition_columns=["col1"],compression="snappy")
+
+#print(bb)
+#aa.create_container("aaggg11","Private")
 #aa.save_dataframe_as_parquet(bbb,"aaggg","folder11",engine="polars",compression="gzip",partition_columns=["col1"])
 #aa.save_dataframe_as_xlsx(bbb,"aaggg","folderxxx",'pliczek111.xlsx',sheet_name="Sheet1",engine="polars")
 #df1=aa.read_parquet_folder("aaggg","folder11",recursive=True,engine="polars")
@@ -26,7 +33,8 @@ aa.create_container("aaggg11","Private")
 #aa.rename_folder("aaggg","folder1","ggggfol222")
 #aa.delete_container("aaggg")
 #aa.create_container("aaggg","Private")
-#vvv=aa.ls_files("aaggg","folder1",False)
+#vvv=aa.ls_files("aaggg","folder10",False)
+#print(vvv)
 #aa.delete_folder("aaggg","ggggfol222")
 #df=aa.read_csv_folder("aaggg","folder1/folder2/fol3",delimiter=";",engine="polars",is_first_row_as_header=True,recursive=True)
 #print(df)

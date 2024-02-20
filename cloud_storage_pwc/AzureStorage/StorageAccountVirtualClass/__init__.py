@@ -52,10 +52,12 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 hasattr(subclass, 'ls_files') and
                 callable(subclass.ls_files) and
                 hasattr(subclass, 'delete_files_by_prefix') and
-                callable(subclass.delete_files_by_prefix)
+                callable(subclass.delete_files_by_prefix) and
+                hasattr(subclass, 'file_exists') and
+                callable(subclass.file_exists) and
+                hasattr(subclass, 'folder_exists') and
+                callable(subclass.folder_exists)
                 or  NotImplemented)
-
-
 
 
     @classmethod
@@ -130,6 +132,14 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Returns:
             bool: True if the account is a Data Lake Storage Gen2 account, False otherwise.
         """
+        raise NotImplementedError
+    
+    @abc.abstractmethod
+    def file_exists(self, container_name : str,directory_path : str,file_name:str)->bool:
+        raise NotImplementedError
+    
+    @abc.abstractmethod
+    def folder_exists(self, container_name : str, directory_path : str)->bool:
         raise NotImplementedError
     
     @abc.abstractmethod
@@ -293,6 +303,11 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             partition_groups = [dict(zip(partition_dict.keys(),items)) for items in product(*partition_dict.values())]
             partition_groups = [d for d in partition_groups if np.nan not in d.values()]
 
+            if file_name is not None:
+                file_name = file_name + "/"
+            else:
+                file_name = ""
+                
             for d in partition_groups:
                 df_part = df
                 partition_path=[]
@@ -310,7 +325,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                         else:
                             df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape)
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/" +"/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name  +"/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
 
 
                 if isinstance(df_part, pl.DataFrame):
@@ -326,7 +341,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                         else:
                             df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_style='never')
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/" + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
                                                 
         else:
             buf = BytesIO()
@@ -392,7 +407,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             partition_dict = {}
             for x in partition_columns:
                 partition_dict[x] = df[x].unique()
-    
+
             partition_groups = [dict(zip(partition_dict.keys(),items)) for items in product(*partition_dict.values())]
             partition_groups = [d for d in partition_groups if np.nan not in d.values()   ]
             
