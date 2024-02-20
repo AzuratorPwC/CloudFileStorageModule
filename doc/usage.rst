@@ -3,12 +3,20 @@ Usage
 =====
 
 
+
 .. py:currentmodule:: cloud-storage-pwc
 
-A :class:`DeltaTable` AAA
+:class:`DeltaTable`
+
+ascdascdsacdcdsc
+
+:method:`wfdfddd`
+
+dfdsfdssvvvvvvvvvvv
 
 
 .. code-block:: python
+
 
     >>> from deltalake import DeltaTable
     >>> dt = DeltaTable("../rust/tests/data/delta-0.2.0")

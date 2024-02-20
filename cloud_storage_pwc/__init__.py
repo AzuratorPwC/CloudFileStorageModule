@@ -2,7 +2,7 @@ from .AzureStorage import Blob
 from .AzureStorage import DataLake
 import logging
 
-class AzureStorageConnectionError(Exception,):
+class AzureStorageConnectionError(Exception):
     """Exception raised for errors in the input salary.
 
     Attributes:

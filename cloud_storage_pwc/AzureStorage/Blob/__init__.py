@@ -66,6 +66,18 @@ class Blob(StorageAccountVirtualClass):
 
 
     def ls_files(self, container_name:str, directory_path:str, recursive:bool=False) -> list:
+        """
+        List files under a specified path within an Azure Blob Storage container.
+
+        Args:
+            container_name (str): The name of the Azure Blob Storage container.
+            directory_path (str): The path within the container to list files from.
+            recursive (bool, optional): Flag indicating whether to list files recursively. Defaults 
+                to False.
+
+        Returns:
+            list: A list of file paths relative to the specified directory.
+        """ 
         try:
             container_client = self.__service_client.get_container_client(container=container_name)
             if container_client.exists() is False:
@@ -86,14 +98,30 @@ class Blob(StorageAccountVirtualClass):
             raise Exception(f"Error listing files in container {container_name}") from e
 
 
-    def read_binary_file(self, container_name:str, directory_path:str, file_name:str) -> bytes:
+    def read_binary_file(self, container_name: str, directory_path: str, file_name: str) -> bytes:
+        """
+        Reads a binary file from the specified container, directory, and file name.
+
+        Args:
+            container_name (str): The name of the container.
+            directory_path (str): The path of the directory where the file is located.
+            file_name (str): The name of the file to read.
+
+        Returns:
+            bytes: The content of the binary file.
+
+        Raises:
+            ContainerNotFound: If the specified container does not exist.
+            BlobNotFound: If the specified file does not exist in the container.
+            Exception: If there is an error reading the file.
+        """
         try:
             container_client = self.__service_client.get_container_client(container=container_name)
             if container_client.exists() is False:
                 raise ContainerNotFound(f"Container {container_name} not found")
             if not directory_path == '' and not directory_path.endswith('/'):
                 directory_path += '/'
-                
+
             path = directory_path + file_name
             blob_client = container_client.get_blob_client(path)
             download = blob_client.download_blob()
