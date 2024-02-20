@@ -37,17 +37,18 @@ def azure_storage(accountname_or_url:str,access_key:str=None,tenant_id:str=None,
     create_object = None
     
     if "dfs.core.windows.net" in accountname_or_url and accountname_or_url.startswith("https://"):
-        logging.info("azure_storage-create Datalake %s",accountname_or_url)
+        logging.info(f"azure_storage-create Datalake {accountname_or_url}")
         create_object = DataLake(accountname_or_url,access_key,tenant_id,application_id,application_secret)
     elif ("blob.core.windows.net" in accountname_or_url and accountname_or_url.startswith("https://") ) or ("127.0.0.1:10000" in accountname_or_url and accountname_or_url.startswith("http://")):
-        logging.info("azure_storage-create Blob %s",accountname_or_url)
+        logging.info(f"azure_storage-create Blob {accountname_or_url}")
         create_object = Blob(accountname_or_url,access_key,tenant_id,application_id,application_secret)
     else:
-        logging.info("azure_storage-create Blob %s",accountname_or_url)
+        logging.info(f"azure_storage-create Blob {accountname_or_url}")
         create_object = Blob(f"https://{accountname_or_url}.blob.core.windows.net/",access_key,tenant_id,application_id,application_secret)
         if create_object.check_is_dfs():
-            logging.info("azure_storage-create Datalake %s",accountname_or_url)
-            create_object = DataLake(f"https://{accountname_or_url}.dfs.core.windows.net/",access_key,tenant_id,application_id,application_secret)       
+            logging.info(f"azure_storage-create Datalake {accountname_or_url}")
+            create_object = DataLake(f"https://{accountname_or_url}.dfs.core.windows.net/",access_key,tenant_id,application_id,application_secret)     
+    logging.info(f"azure_storage-return {accountname_or_url}")
     return create_object
     
 if __name__ == '__main__':

@@ -74,8 +74,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                     header= 0 if is_first_row_as_header is True else None ,
                     encoding=encoding,skiprows=skip_rows,keep_default_na=False,
                     na_values=NAN_VALUES,skip_blank_lines=skip_blank_lines)
-                        
-  
+                    
         elif engine =='polars':
             if quoting is not None:
                 df = pl.read_csv(BytesIO(input_bytes),separator=delimiter,has_header=is_first_row_as_header,encoding=encoding,
@@ -212,6 +211,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
     def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8", delimiter:DELIMITER_TYPES = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:QUOTING_TYPES=None,tech_columns:bool=False,recursive:bool=False):
         try:
             list_files = self.ls_files(container_name,directory_path, recursive=recursive)
+            logging.info(f"read_csv_folder {container_name}/{directory_path} {recursive} {list_files}")
             df = None
             if list_files:
                 for f in list_files:
@@ -234,8 +234,8 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
     
     def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine: ENGINE_TYPES ='polars',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets:list=None,tech_columns:bool=False):
         try:
+            logging.info(f"read_excel_file {container_name}/{directory_path}/{file_name} {sheets}")
             download_bytes = self.read_binary_file(container_name,directory_path,file_name)
-            
             if file_name.endswith(".xls"):
                 workbook = pd.ExcelFile(BytesIO(download_bytes), engine='xlrd')
             else:
@@ -277,8 +277,8 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
     
     def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:DELIMITER_TYPES = ";",is_first_row_as_header:bool = True,quoting:QUOTING_TYPES=None,escape:ESCAPE_TYPES=None, engine: ENGINE_TYPES ='polars'):
         
-        
-        
+        logging.info(f"save_dataframe_as_csv {container_name}/{directory_path}/{file_name}")
+
         if isinstance(df, pd.DataFrame):
             if df.empty:
                 return
@@ -385,7 +385,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             ValueError: If the compression method is not valid.
             ResourceNotFoundError: If the specified container or directory does not exist.
             StorageErrorException: If there is an issue with the storage service.
-        """        
+        """
+        logging.info(f"save_dataframe_as_parquet {container_name}/{directory_path}")
+    
         if isinstance(df, pd.DataFrame):
             if df.empty:
                 return
@@ -468,6 +470,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             ResourceNotFoundError: If the specified container or directory does not exist.
             StorageErrorException: If there is an issue with the storage service.
         """
+        logging.info(f"save_dataframe_as_xlsx {container_name}/{directory_path}/{file_name} {sheet_name}")
         if isinstance(df,pd.DataFrame):
             if df.empty:
                 return
@@ -526,6 +529,8 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             ResourceNotFoundError: If the specified container, directory, or file does not exist.
             StorageErrorException: If there is an issue with the storage service.
         """
+        logging.info(f"read_parquet_file {container_name}/{directory_path}/{file_name}")
+
         download_bytes = self.read_binary_file(container_name,directory_path,file_name)
         df = self.read_parquet_bytes(input_bytes=download_bytes,columns=columns,engine=engine)
         
@@ -554,6 +559,8 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             StorageErrorException: If there is an issue with the storage service.
         """    
         list_files = self.ls_files(container_name,directory_path, recursive=recursive)
+        logging.info(f"read_parquet_file {container_name}/{directory_path} {recursive} {list_files}")
+
         df = None
         if list_files:
             for f in list_files:
@@ -719,7 +726,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
     
-    def save_json_file(self, df, container_name: str, directory: str, file_name:str = None, engine: ENGINE_TYPES ='polars', orient:ORIENT_TYPES= 'records'):
+    def save_json_file(self, df, container_name: str, directory_path: str, file_name:str = None, engine: ENGINE_TYPES ='polars', orient:ORIENT_TYPES= 'records'):
         """
         Saves a Pandas or Polars DataFrame to a JSON file in Azure Blob Storage.
 
@@ -739,6 +746,8 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             ResourceNotFoundError: If the specified container or directory does not exist.
             StorageErrorException: If there is an issue with the storage service.
         """
+        logging.info(f"save_json_file {container_name}/{directory_path}/{file_name}")
+
         if isinstance(df,pd.DataFrame):
             if df.empty:
                 return

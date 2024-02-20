@@ -88,41 +88,10 @@ class DataLake(StorageAccountVirtualClass):
         else:
             raise BlobNotFound(f"{container_name}/{directory_path}/{file_name} not found")
         return download_bytes
-
-    
-
-        
-    
-    def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine: ENGINE_TYPES ='polars',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets:list=None,tech_columns:bool=False):
-        file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
-        directory_client = file_system_client.get_directory_client(directory_path)
-        file_client = directory_client.get_file_client(file_name)
-        download = file_client.download_file()
-        download_bytes = download.readall()
-        if file_name.endswith(".xls"):
-            workbook = pd.ExcelFile(download_bytes, engine='xlrd') 
-        else:
-            workbook = pd.ExcelFile(download_bytes)
-          
-        workbook_sheetnames = workbook.sheet_names # get all sheet names
-        if bool(sheets):
-            workbook_sheetnames=list(set(workbook_sheetnames) & set(sheets))
-        list_of_dff = []
-        if is_first_row_as_header:
-            is_first_row_as_header=0
-        else:
-            is_first_row_as_header=None
-        for sheet in workbook_sheetnames:
-            dff = pd.read_excel(workbook, sheet_name = sheet,skip_rows=skip_rows, index_col = None, header = is_first_row_as_header)
-            if tech_columns:
-                df =  add_tech_columns(df,container_name,directory_path.replace("\\","/"),file_name)
-            
-            list_of_dff.append(DataFromExcel(dff,sheet))
-            
-        return list_of_dff
     
     
     def delete_file(self,container_name : str,directory_path : str,file_name:str,wait:bool=True):
+        logging.info(f"delete_file {container_name}/{directory_path}/{file_name}")
         try:
             file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
             if file_system_client.exists() is False:
@@ -157,6 +126,8 @@ class DataLake(StorageAccountVirtualClass):
                 raise ContainerNotFound(f"Container {container_name} not found")
             
             files_exists = self.ls_files(container_name,directory_path,recursive)
+            logging.info(f"delete_files_by_prefix {container_name}/{directory_path}/{file_prefix} {recursive}")
+
             files = [f for f in files_exists if f.split("/")[-1].startswith(file_prefix)]
             for f in files:
                 self.delete_file(container_name,f.removesuffix(f"/{f.split('/')[-1]}"),f.split("/")[-1])
@@ -176,6 +147,7 @@ class DataLake(StorageAccountVirtualClass):
         
     def delete_folder(self,container_name : str,directory_path : str,wait:bool=True):
         try:
+            logging.info(f"delete_folder {container_name}/{directory_path}")
             file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
             if file_system_client.exists() is False:
                 raise ContainerNotFound(f"Container {container_name} not found")

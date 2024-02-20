@@ -163,6 +163,8 @@ class Blob(StorageAccountVirtualClass):
 
 
     def delete_file(self,container_name : str,directory_path : str,file_name:str,wait:bool=True):
+        logging.info(f"delete_file {container_name}/{directory_path}/{file_name}")
+
         container_client = self.__service_client.get_container_client(container=container_name)
         if container_client.exists() is False:
             raise ContainerNotFound(f"Container {container_name} not found")
@@ -189,6 +191,7 @@ class Blob(StorageAccountVirtualClass):
             raise ContainerNotFound(f"Container {container_name} not found")
 
         files_exists = self.ls_files(container_name,directory_path,recursive)
+        logging.info(f"delete_files_by_prefix {container_name}/{directory_path}/{file_prefix} {recursive}")
         files = [f for f in files_exists if f.split("/")[-1].startswith(file_prefix)]
         for f in files:
             blob_client = container_client.get_blob_client(directory_path+"/"+f)
@@ -203,6 +206,7 @@ class Blob(StorageAccountVirtualClass):
                 files = [f for f in files_exists if f.split("/")[-1].startswith(file_prefix)]
         
     def delete_folder(self,container_name : str,directory_path : str,wait:bool=True):
+        logging.info(f"delete_files_by_prefix {container_name}/{directory_path}")
         container_client = self.__service_client.get_container_client(container=container_name)
         if container_client.exists() is False:
             raise ContainerNotFound(f"Container {container_name} not found")
