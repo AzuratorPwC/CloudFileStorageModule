@@ -80,8 +80,8 @@ jobs:
         # setup twine auth
         cat > ~/.pypirc <<EOF
         [distutils]
-        index-servers=AzureAcademy/PwCDataLibs_dev1
-        [AzureAcademy/PwCDataLibs_dev1]
+        index-servers=PwCDataLibs_dev1
+        [PwCDataLibs_dev1]
         repository=https://pkgs.dev.azure.com/$azdo_org_name/_packaging/$azdo_artifacts_feed_name/pypi/upload
         username=build
         password=$access_token
