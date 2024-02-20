@@ -2,8 +2,8 @@
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 [project]
-name = "cloud_storadev444"
-version = "3"
+name = "cloud_storage_pwc"
+version = "1"
 authors = [
   { name="artur starosta", email="artur.starosta@pwc.com" },
 ]
