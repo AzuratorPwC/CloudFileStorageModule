@@ -11,7 +11,7 @@ on:
     branches: [ "main" ]
 
 env:
-  azdo_artifacts_feed_name: PWCDataLibs
+  azdo_artifacts_feed_name: PwCDataLibs_dev1
   azdo_org_name: BASDATA/bd61f679-2c80-40cb-9e82-9e6bea9f511f
 
 jobs:
