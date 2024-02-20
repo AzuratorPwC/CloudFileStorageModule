@@ -14,12 +14,13 @@ from cloud_storage_pwc import azure_storage
 #t=bbb.get_sub_directory_client("folder1/fol4/eeee").create_directory()
 #print(t)
 #logging.debug('This will get logged')
-
+import logging
+logging.basicConfig(level=logging.DEBUG)
 aa=azure_storage("mystorageairflowdev","IdepCBLsltZ+1uLFOxk9jmqhnxMUziioFFODu6OCtQ/BjLBGnDVDftgEFACPKZ8kJIAfdTSLsEhe+AStk4KOMg==")
 #bbb=aa.read_csv_folder("aaggg","source",delimiter=';',is_first_row_as_header=True,engine="pandas",tech_columns=True)
 #bb=aa.read_parquet_folder("aaggg","folder10",engine="pandas")
-v=aa.file_exists("foldercheck1","folder2","file1.txt")
-print(v)
+aa.create_container("dev22244")
+
 #aa.save_dataframe_as_csv(bb,"aaggg","newfol22","table1",delimiter=';',is_first_row_as_header=True,quoting="\"",engine="polars",partition_columns=["col1"])
 
 #aa.save_dataframe_as_parquet(bb,"aaggg","newfvf9999",engine="pandas",partition_columns=["col1"],compression="snappy")

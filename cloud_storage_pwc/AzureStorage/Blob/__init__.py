@@ -308,6 +308,7 @@ class Blob(StorageAccountVirtualClass):
 
     def create_container(self,container_name : str,public_access:CONTAINER_ACCESS_TYPES='Private'):
         try:
+            logging.info(f"create_container {container_name} {public_access}")
             container_client = self.__service_client.get_container_client(container=container_name)
             if not container_client.exists():
                 if public_access == "Private":
@@ -321,6 +322,7 @@ class Blob(StorageAccountVirtualClass):
             raise Exception(f"Error creating container {container_name}") from e
     def delete_container(self,container_name : str):
         try:
+            logging.info(f"delete_container {container_name}")
             container_client = self.__service_client.get_container_client(container=container_name)
             if container_client.exists():
                 container_client.delete_container()
