@@ -72,10 +72,10 @@ jobs:
 
     - name: Setup Python package feed
       run: |
-        access_token=artur.starosta%40pwc.com:uzxu5aabca73gzmwjvf5er4qrlalgmtczx6rkgdazttseymrmdoa  #$(az account get-access-token | jq .accessToken -r)
+        access_token='uzxu5aabca73gzmwjvf5er4qrlalgmtczx6rkgdazttseymrmdoa'
 
         # setup pip auth
-        echo "PIP_INDEX_URL=https://$access_token@pkgs.dev.azure.com/$azdo_org_name/_packaging/$azdo_artifacts_feed_name/pypi/simple/" >> $GITHUB_ENV
+        echo "PIP_INDEX_URL=https://:$access_token@pkgs.dev.azure.com/$azdo_org_name/_packaging/$azdo_artifacts_feed_name/pypi/simple/" >> $GITHUB_ENV
 
         # setup twine auth
         cat > ~/.pypirc <<EOF
