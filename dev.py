@@ -1,11 +1,12 @@
 
 
 from cloud_storage_pwc import azure_storage
-#from azure.storage.filedatalake import DataLakeServiceClient
-#aaa= DataLakeServiceClient(account_url="https://datakeeee2.dfs.core.windows.net/", credential="xzwfPjunJa4vz+j7h/2NLDHgQ+BKKWF1zHmLb308zQAbznpQXiCU6MVmlJ0J9HMsL0P+04fYQ7NU+AStmGGBrg==")
-
+from azure.storage.filedatalake import DataLakeServiceClient
+from azure.storage.blob import BlobServiceClient
+aaa= DataLakeServiceClient(account_url="https://datakeeee2.dfs.core.windows.net/", credential="xzwfPjunJa4vz+j7h/2NLDHgQ+BKKWF1zHmLb308zQAbznpQXiCU6MVmlJ0J9HMsL0P+04fYQ7NU+AStmGGBrg==")
+cc=aaa.get_file_system_client("aaggg").get_directory_client("/").exists()
 #b=aaa.get_file_system_client("aaggg").get_directory_client("/").get_sub_directory_client("folder1").get_file_client("file2.txt").exists() #.get_file_client("file1.txt").rename_file("aaaa.b")
-#print(b)
+print(cc)
 
 
 #fs=aaa.get_file_system_client("aaggg").get_directory_client("/b").rename_directory
@@ -16,11 +17,11 @@ from cloud_storage_pwc import azure_storage
 #logging.debug('This will get logged')
 import logging
 
-aa=azure_storage("strwebfazzabi")
+#aa=azure_storage("strwebfazzabi")
 #bbb=aa.read_csv_folder("aaggg","source",delimiter=';',is_first_row_as_header=True,engine="pandas",tech_columns=True)
 #bb=aa.read_parquet_folder("aaggg","folder10",engine="pandas")
 #aa.create_container("dev22245")
-aa.delete_folder("dev22245","/aaa",True)
+#aa.delete_folder("dev22245","/aaa",True)
 #aa.save_dataframe_as_csv(bb,"aaggg","newfol22","table1",delimiter=';',is_first_row_as_header=True,quoting="\"",engine="polars",partition_columns=["col1"])
 
 #aa.save_dataframe_as_parquet(bb,"aaggg","newfvf9999",engine="pandas",partition_columns=["col1"],compression="snappy")

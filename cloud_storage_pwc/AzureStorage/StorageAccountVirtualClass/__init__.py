@@ -282,14 +282,14 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         if isinstance(df, pd.DataFrame):
             if df.empty:
                 return
-            df = df.replace(r'\\n', '', regex=True)
+            df = df.replace('\n', ' ', regex=True)
             if engine != 'pandas':
                 df = pl.from_pandas(df)
 
         elif isinstance(df, pl.DataFrame):
             if df.is_empty():
                 return
-            df = df.with_columns(pl.col(pl.Utf8).str.replace_all(r"\\n", ""))
+            df = df.with_columns(pl.col(pl.Utf8).str.replace_all("\n", " "))
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
 
@@ -474,14 +474,14 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         if isinstance(df,pd.DataFrame):
             if df.empty:
                 return
-            #df = df.replace(r'\\n', '', regex=True)
+            df = df.replace('\n', ' ', regex=True)
             if engine != 'pandas':
                 df = pl.from_pandas(df)
 
         elif isinstance(df,pl.DataFrame):
             if df.is_empty():
                 return
-            #df = df.with_columns(pl.col(pl.Utf8).str.replace_all(r"\\n", ""))
+            df = df.with_columns(pl.col(pl.Utf8).str.replace_all("\n", " "))
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
         #check_if_file_exist = self.__service_client.get_container_client(container=container_name).get_blob_client(directory_path +"/" + file_name).exists()
@@ -751,18 +751,18 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         if isinstance(df,pd.DataFrame):
             if df.empty:
                 return
-            #df = df.replace(r'\\n', '', regex=True)
+            df = df.replace('\n', ' ', regex=True)
             if engine != 'pandas':
                 df = pl.from_pandas(df)
 
         elif isinstance(df,pl.DataFrame):
             if df.is_empty():
                 return
-            #df = df.with_columns(pl.col(pl.Utf8).str.replace_all(r"\\n", ""))
+            df = df.with_columns(pl.col(pl.Utf8).str.replace_all("\n", " "))
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
 
-        buf = BytesIO()    
+        buf = BytesIO()   
         
         if isinstance(df, pd.DataFrame):
             df.to_json(buf, orient=orient,lines=True)

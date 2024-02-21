@@ -41,8 +41,6 @@ class DataLake(StorageAccountVirtualClass):
                 token_credential = ClientSecretCredential(
                     tenant_id, application_id,application_secret)
                 self.__service_client = DataLakeServiceClient(account_url=url, credential=token_credential)
-            else:
-                raise Exception("dupa1")
             #self.__service_client.create_file_system("dev666")
         #except ResourceNotFoundError as e:
         #    logging.error(f"Storage account {url} not found")
