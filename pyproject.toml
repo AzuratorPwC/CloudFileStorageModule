@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 [project]
 name = "cloud_storage_pwc"
-version = "1.0.7"
+version = "1.0.8"
 authors = [
   { name="artur starosta", email="artur.starosta@pwc.com" },
 ]
@@ -16,4 +16,12 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = []
+dependencies = ["numpy==1.23.2",
+"pandas==2.2.0",
+"azure-identity",
+"azure-storage-file-datalake",
+"azure-storage-blob",
+"xlsxwriter",
+"polars",
+"openpyxl",
+"fastexcel" ]
