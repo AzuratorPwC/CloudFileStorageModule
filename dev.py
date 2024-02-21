@@ -16,11 +16,11 @@ from cloud_storage_pwc import azure_storage
 #logging.debug('This will get logged')
 import logging
 
-aa=azure_storage("mystorageairflowdev","IdepCBLsltZ+1uLFOxk9jmqhnxMUziioFFODu6OCtQ/BjLBGnDVDftgEFACPKZ8kJIAfdTSLsEhe+AStk4KOMg==")
+aa=azure_storage("strwebfazzabi")
 #bbb=aa.read_csv_folder("aaggg","source",delimiter=';',is_first_row_as_header=True,engine="pandas",tech_columns=True)
 #bb=aa.read_parquet_folder("aaggg","folder10",engine="pandas")
-aa.create_container("dev22244")
-
+#aa.create_container("dev22245")
+aa.delete_folder("dev22245","/aaa",True)
 #aa.save_dataframe_as_csv(bb,"aaggg","newfol22","table1",delimiter=';',is_first_row_as_header=True,quoting="\"",engine="polars",partition_columns=["col1"])
 
 #aa.save_dataframe_as_parquet(bb,"aaggg","newfvf9999",engine="pandas",partition_columns=["col1"],compression="snappy")

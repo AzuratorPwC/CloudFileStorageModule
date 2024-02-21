@@ -61,9 +61,9 @@ class Blob(StorageAccountVirtualClass):
 
 
     def check_is_dfs(self) -> bool:
-        account_info = self.__service_client.get_account_information()
-        return account_info['account_kind'] == 'StorageV2' and account_info['is_hns_enabled']
-
+        #account_info = self.__service_client.get_service_properties()
+        #return account_info['account_kind'] == 'StorageV2' and account_info['is_hns_enabled']
+        return True
 
     def ls_files(self, container_name:str, directory_path:str, recursive:bool=False) -> list:
         """
