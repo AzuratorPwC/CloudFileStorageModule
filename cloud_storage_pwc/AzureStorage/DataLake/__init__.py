@@ -41,13 +41,18 @@ class DataLake(StorageAccountVirtualClass):
                 token_credential = ClientSecretCredential(
                     tenant_id, application_id,application_secret)
                 self.__service_client = DataLakeServiceClient(account_url=url, credential=token_credential)
-            self.__service_client.create_file_system("dev666")
-        except ResourceNotFoundError as e:
-            logging.error(f"Storage account {url} not found")
-            raise StorageAccountNotFound(f"Storage account {url} not found") from e
-        except HttpResponseError as e:
-            logging.error(f"Storage account {url} authorization error")
-            raise StorageAccountAuthenticationError(f"Storage account {url} authorization error") from e
+            else:
+                raise Exception("dupa1")
+            #self.__service_client.create_file_system("dev666")
+        #except ResourceNotFoundError as e:
+        #    logging.error(f"Storage account {url} not found")
+        #    raise StorageAccountNotFound(f"Storage account {url} not found") from e
+        #except HttpResponseError as e:
+        #    logging.error(f"Storage account {url} authorization error")
+        #    raise StorageAccountAuthenticationError(f"Storage account {url} authorization error") from e
+        except Exception as e:
+            raise e
+        
         
     def check_is_dfs(self)->bool:
         return True

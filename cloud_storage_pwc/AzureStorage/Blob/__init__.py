@@ -5,6 +5,7 @@
 #from tkinter import E
 #import uuid
 import os
+from shutil import ExecError
 #from io import BytesIO
 #from itertools import product
 import time
@@ -48,7 +49,9 @@ class Blob(StorageAccountVirtualClass):
                                                           application_secret)
                 self.__service_client = BlobServiceClient(account_url=url,
                                                           credential=token_credential,logging_enable=False)
-            self.__service_client.get_service_properties()
+            else:
+                raise Exception("dupa222")
+            #self.__service_client.get_service_properties()
         except ResourceNotFoundError as e:
             logging.error(f"Storage account {url} not found")
             raise StorageAccountNotFound(f"Storage account {url} not found") from e
