@@ -15,7 +15,7 @@ from cloud_storage_pwc import azure_storage
 #print(t)
 #logging.debug('This will get logged')
 import logging
-logging.basicConfig(level=logging.DEBUG)
+
 aa=azure_storage("mystorageairflowdev","IdepCBLsltZ+1uLFOxk9jmqhnxMUziioFFODu6OCtQ/BjLBGnDVDftgEFACPKZ8kJIAfdTSLsEhe+AStk4KOMg==")
 #bbb=aa.read_csv_folder("aaggg","source",delimiter=';',is_first_row_as_header=True,engine="pandas",tech_columns=True)
 #bb=aa.read_parquet_folder("aaggg","folder10",engine="pandas")

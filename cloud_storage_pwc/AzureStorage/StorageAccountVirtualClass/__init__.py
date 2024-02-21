@@ -4,19 +4,19 @@ import pandas as pd
 import polars as pl
 from ..Utils import *
 from ..Exceptions import *
-import pyarrow as pa
+#import pyarrow as pa
 from io import BytesIO
-import pyarrow.parquet as pq
+#import pyarrow.parquet as pq
 import uuid
-import os
+#import os
 import numpy as np 
 import pandas as pd
 from openpyxl import Workbook
 from itertools import product
 import polars as pl
-import time
-from datetime import datetime
-import csv
+#import time
+#from datetime import datetime
+#import csv
 from ..Utils import *
 from ..Exceptions import *
 import logging
@@ -774,7 +774,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         else:
             file_name_check = f"{uuid.uuid4().hex}.json"
         buf.seek(0)
-        self.save_binary_file(buf.getvalue(), container_name ,directory,file_name_check,True)
+        self.save_binary_file(buf.getvalue(), container_name ,directory_path,file_name_check,True)
     
     @abc.abstractmethod
     def ls_files(self,container_name : str, directory_path : str, recursive:bool=False):

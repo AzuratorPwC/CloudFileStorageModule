@@ -1,25 +1,25 @@
 #from typing import override
-from multiprocessing import AuthenticationError
-import csv
-from shutil import ExecError
-from tkinter import E
-import uuid
+#from multiprocessing import AuthenticationError
+#import csv
+#from shutil import ExecError
+#from tkinter import E
+#import uuid
 import os
-from io import BytesIO
-from itertools import product
+#from io import BytesIO
+#from itertools import product
 import time
 import logging
-import numpy as np
-import pandas as pd
-import polars as pl
-from  openpyxl import load_workbook
+#import numpy as np
+#import pandas as pd
+#import polars as pl
+#from  openpyxl import load_workbook
 from azure.storage.blob import BlobServiceClient
 from azure.identity import ClientSecretCredential
 from azure.identity import DefaultAzureCredential
 from azure.core.exceptions import HttpResponseError,ResourceNotFoundError,ResourceExistsError
 from ..Exceptions import *
-import pyarrow as pa
-import pyarrow.parquet as pq
+#import pyarrow as pa
+#import pyarrow.parquet as pq
 from ..StorageAccountVirtualClass import StorageAccountVirtualClass
 from ..Utils import *
 from azure.storage.blob._shared.authentication import SharedKeyCredentialPolicy
