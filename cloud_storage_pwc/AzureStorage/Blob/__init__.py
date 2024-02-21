@@ -22,7 +22,7 @@ from ..Exceptions import *
 #import pyarrow.parquet as pq
 from ..StorageAccountVirtualClass import StorageAccountVirtualClass
 from ..Utils import *
-from azure.storage.blob._shared.authentication import SharedKeyCredentialPolicy
+#from azure.storage.blob._shared.authentication import SharedKeyCredentialPolicy
 
 class Blob(StorageAccountVirtualClass):
     """
