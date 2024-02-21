@@ -32,7 +32,7 @@ class DataLake(StorageAccountVirtualClass):
             if access_key is not None and tenant_id is None and application_id is None and application_secret is None:
                 logging.info("DataLake-create by accesskey %s",url)
                 self.__service_client = DataLakeServiceClient(account_url=url, credential=access_key)
-            elif access_key is  None and tenant_id is None and application_id is None and application_secret is None: 
+            elif access_key is  None and tenant_id is None and application_id is None and application_secret is None:
                 logging.info("DataLake-create by defaultazurecredential %s", url)
                 credential = DefaultAzureCredential()
                 self.__service_client = DataLakeServiceClient(account_url=url, credential=credential)
@@ -41,7 +41,7 @@ class DataLake(StorageAccountVirtualClass):
                 token_credential = ClientSecretCredential(
                     tenant_id, application_id,application_secret)
                 self.__service_client = DataLakeServiceClient(account_url=url, credential=token_credential)
-            self.__service_client.get_service_properties()
+            self.__service_client.create_file_system("dev666")
         except ResourceNotFoundError as e:
             logging.error(f"Storage account {url} not found")
             raise StorageAccountNotFound(f"Storage account {url} not found") from e
