@@ -21,8 +21,12 @@ from azure.storage.blob import BlobServiceClient
 
 
 aa=azure_storage("strwebfazzabidev")
-vvv=aa.ls_files("webstage","",True)
-print(vvv)
+
+dfs=aa.read_excel_file("webstage-dev","shp","dane.xlsx",engine="polars",sheets=("Sheet1","Dev"),tech_columns=True,is_first_row_as_header=True)
+print(dfs.keys())
+aa.save_dataframe_as_csv(dfs['Dev'],"webstage-dev","shp","dev12.csv",engine="pandas",is_first_row_as_header=False)
+#vvv=aa.ls_files("webstage","",True)
+#print(vvv)
 #df=aa.read_csv_folder("webstage-dev","shp/DEBBUG/1", delimiter="◇",engine="pandas",is_first_row_as_header=True,tech_columns=False)
 #aa.save_dataframe_as_parquet(df,"webstage-dev","shp",compression="snappy")
 #aa.save_dataframe_as_xlsx(df,"webstage-dev","shp",'pliczek111.xlsx',sheet_name="Sheet1",engine="pandas",header=True)

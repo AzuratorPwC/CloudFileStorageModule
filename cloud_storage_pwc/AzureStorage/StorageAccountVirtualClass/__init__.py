@@ -207,12 +207,18 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             return df
         else:
             raise FolderDataNotFound(f"Folder data {directory_path} not found in container {container_name}")
-            
     
-    def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine: ENGINE_TYPES ='polars',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets:list=None,is_check_sheet_exist:bool=False,tech_columns:bool=False):
+    if isinstance(("aa","vdfdf"), list):
+        print("your object is a list !")
+    
+    def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine: ENGINE_TYPES ='polars',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets=None,is_check_sheet_exist:bool=False,tech_columns:bool=False):
         download_bytes = self.read_binary_file(container_name,directory_path,file_name)
-        
-        if is_check_sheet_exist:
+        workbook = None
+        if isinstance(sheets, str):
+            sheets = (sheets,)
+            
+            
+        if is_check_sheet_exist or sheets is None:
             if file_name.endswith(".xls"):
                 workbook = pd.ExcelFile(BytesIO(download_bytes), engine='xlrd')
             else:
@@ -229,34 +235,36 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             load_sheets = sheets
             
             
-        list_of_dff = []
+        list_of_dff = {}
         if is_first_row_as_header:
             is_first_row_as_header=0
         else:
             is_first_row_as_header=None
         
-        if workbook is None and engine == 'pandas':
-            if file_name.endswith(".xls"):
-                workbook = pd.ExcelFile(BytesIO(download_bytes), engine='xlrd')
-            else:
-                workbook = pd.ExcelFile(BytesIO(download_bytes))
-            
-        for sheet in load_sheets:
-            if engine == 'pandas':
+        if engine == 'pandas':
+        
+            if workbook is None:
+                if file_name.endswith(".xls"):
+                    workbook = pd.ExcelFile(BytesIO(download_bytes), engine='xlrd')
+                else:
+                    workbook = pd.ExcelFile(BytesIO(download_bytes))
+
+            for sheet in load_sheets:
                 dff = pd.read_excel(workbook, sheet_name = sheet,skiprows=skip_rows, index_col = None, header = is_first_row_as_header)
-            elif engine == 'polars':
-                dff = pl.read_excel(BytesIO(download_bytes),engine="calamine",sheet_name=sheet
-                            #read_options={"has_header": is_first_row_as_header,"skip_rows":skip_rows}
-                        )
-                    
+        
+                if tech_columns:
+                    dff =  add_tech_columns(dff,container_name,directory_path.replace("\\","/"),file_name)
+                
+                list_of_dff[sheet]=dff
+        elif engine == 'polars':
+            list_of_dff = pl.read_excel(BytesIO(download_bytes),engine="calamine",sheet_name=load_sheets
+                        #,read_options={"has_header": False}
+                )
             if tech_columns:
-                dff =  add_tech_columns(dff,container_name,directory_path.replace("\\","/"),file_name)
-            
-            list_of_dff.append(DataFromExcel(dff,sheet))
-        if(len(list_of_dff)==1):
-            return list_of_dff[0]
-        else:
-            return list_of_dff
+                for key in list_of_dff.keys():
+                    list_of_dff[key] = add_tech_columns(list_of_dff[key],container_name,directory_path.replace("\\","/"),file_name)
+        
+        return list_of_dff
     
     
     def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:DELIMITER_TYPES = ";",is_first_row_as_header:bool = True,quoting:QUOTING_TYPES=None,escape:ESCAPE_TYPES=None, engine: ENGINE_TYPES ='polars'):
