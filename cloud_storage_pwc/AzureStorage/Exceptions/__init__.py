@@ -14,6 +14,9 @@ class StorageAccountNotFound(Exception):
     
 class StorageAccountAuthenticationError(Exception):
     """Raise for my specific kind of exception"""
+    
+class NotAuthorizedToPerformThisOperation(Exception):
+    """Raise for my specific kind of exception"""
 
 class ContainerAccessTypes(Exception):
     """Raise for my specific kind of exception"""

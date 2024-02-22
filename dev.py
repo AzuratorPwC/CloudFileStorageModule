@@ -7,11 +7,11 @@ from azure.storage.blob import BlobServiceClient
 #aaa= DataLakeServiceClient(account_url="https://datakeeee2.blob.core.windows.net/", credential="xzwfPjunJa4vz+j7h/2NLDHgQ+BKKWF1zHmLb308zQAbznpQXiCU6MVmlJ0J9HMsL0P+04fYQ7NU+AStmGGBrg==")
 #aaa=azure_storage("datakeeee2","xzwfPjunJa4vz+j7h/2NLDHgQ+BKKWF1zHmLb308zQAbznpQXiCU6MVmlJ0J9HMsL0P+04fYQ7NU+AStmGGBrg==")
 
-aaa=azure_storage("mystorageairflowdev","IdepCBLsltZ+1uLFOxk9jmqhnxMUziioFFODu6OCtQ/BjLBGnDVDftgEFACPKZ8kJIAfdTSLsEhe+AStk4KOMg==")
+#aaa=azure_storage("mystorageairflowdev","IdepCBLsltZ+1uLFOxk9jmqhnxMUziioFFODu6OCtQ/BjLBGnDVDftgEFACPKZ8kJIAfdTSLsEhe+AStk4KOMg==")
 #cc=aaa.get_file_system_client("aaggg").get_directory_client("/").exists()
 #b=aaa.get_file_system_client("aaggg").get_directory_client("/").get_sub_directory_client("folder1").get_file_client("file2.txt").exists() #.get_file_client("file1.txt").rename_file("aaaa.b")
-v=aaa.read_csv_folder("foldercheck1","folder1", delimiter=";",engine="pandas",recursive=True,is_first_row_as_header=True,tech_columns=True)
-print(v)
+#v=aaa.read_csv_folder("foldercheck1","folder1", delimiter=";",engine="pandas",recursive=True,is_first_row_as_header=True,tech_columns=True)
+#print(v)
 #fs=aaa.get_file_system_client("aaggg").get_directory_client("/b").rename_directory
 
 #bbb=fs.get_directory_client("/")
@@ -20,7 +20,13 @@ print(v)
 #logging.debug('This will get logged')
 
 
-#aa=azure_storage("strwebfazzabi")
+aa=azure_storage("strwebfazzabidev")
+vvv=aa.ls_files("webstage","",True)
+print(vvv)
+#df=aa.read_csv_folder("webstage-dev","shp/DEBBUG/1", delimiter="◇",engine="pandas",is_first_row_as_header=True,tech_columns=False)
+#aa.save_dataframe_as_parquet(df,"webstage-dev","shp",compression="snappy")
+#aa.save_dataframe_as_xlsx(df,"webstage-dev","shp",'pliczek111.xlsx',sheet_name="Sheet1",engine="pandas",header=True)
+#aa.create_container("con1")
 #bbb=aa.read_csv_folder("aaggg","source",delimiter=';',is_first_row_as_header=True,engine="pandas",tech_columns=True)
 #bb=aa.read_parquet_folder("aaggg","folder10",engine="pandas")
 #aa.create_container("dev22245")

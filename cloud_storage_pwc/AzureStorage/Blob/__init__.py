@@ -61,20 +61,23 @@ class Blob(StorageAccountVirtualClass):
                 if recursive or not '/' in relative_path:
                     files.append(relative_path)
             return files
-        except ContainerNotFound as e:
-            raise e
+        except HttpResponseError as e:
+            raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
 
     def file_exists(self, container_name : str,directory_path : str,file_name:str)->bool:
-        container_client = self.__service_client.get_container_client(container=container_name)
-        if container_client.exists() is False:
-            raise ContainerNotFound(f"Container {container_name} not found")
-        if not directory_path == '' and not directory_path.endswith('/'):
-            directory_path += '/'
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if container_client.exists() is False:
+                raise ContainerNotFound(f"Container {container_name} not found")
+            if not directory_path == '' and not directory_path.endswith('/'):
+                directory_path += '/'
             
-        path = directory_path + file_name
-        blob_client = container_client.get_blob_client(path)
+            path = directory_path + file_name
+            blob_client = container_client.get_blob_client(path)
         
-        return blob_client.exists()
+            return blob_client.exists()
+        except HttpResponseError as e:
+            raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
           
     def folder_exists(self, container_name : str, directory_path : str)->bool:
         
@@ -102,20 +105,23 @@ class Blob(StorageAccountVirtualClass):
             BlobNotFound: If the specified file does not exist in the container.
             Exception: If there is an error reading the file.
         """
-        container_client = self.__service_client.get_container_client(container=container_name)
-        if container_client.exists() is False:
-            raise ContainerNotFound(f"Container {container_name} not found")
-        if not directory_path == '' and not directory_path.endswith('/'):
-            directory_path += '/'
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if container_client.exists() is False:
+                raise ContainerNotFound(f"Container {container_name} not found")
+            if not directory_path == '' and not directory_path.endswith('/'):
+                directory_path += '/'
 
-        path = directory_path + file_name
-        blob_client = container_client.get_blob_client(path)
-        if blob_client.exists():
-            download = blob_client.download_blob()
-            download_bytes = download.readall()
-            return download_bytes
-        else:
-            raise BlobNotFound(f"File {file_name} not found in container {container_name}")    
+            path = directory_path + file_name
+            blob_client = container_client.get_blob_client(path)
+            if blob_client.exists():
+                download = blob_client.download_blob()
+                download_bytes = download.readall()
+                return download_bytes
+            else:
+                raise BlobNotFound(f"File {file_name} not found in container {container_name}")
+        except HttpResponseError as e:
+            raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
 
 
     def save_binary_file(self, input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True):
@@ -129,38 +135,43 @@ class Blob(StorageAccountVirtualClass):
             new_blob_client.upload_blob(bytes(input_bytes), overwrite=is_overwrite)
         except ResourceExistsError as e:
             raise BlobAlreadyExists(f"File {file_name} already exists") from e
+        except HttpResponseError as e:
+            raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
 
 
     def delete_file(self,container_name : str,directory_path : str,file_name:str,wait:bool=True):
-        logging.info(f"delete_file {container_name}/{directory_path}/{file_name}")
-
-        container_client = self.__service_client.get_container_client(container=container_name)
-        if container_client.exists() is False:
-            raise ContainerNotFound(f"Container {container_name} not found")
-        if directory_path =="" or directory_path is None:
-            path=file_name
-        else:
-            path = "/".join( (directory_path,file_name))
-        blob_client = container_client.get_blob_client(path)
-        if blob_client.exists():
-            blob_client.delete_blob(delete_snapshots="include")
+        try:
+            container_client = self.__service_client.get_container_client(container=container_name)
+            if container_client.exists() is False:
+                raise ContainerNotFound(f"Container {container_name} not found")
+            if directory_path =="" or directory_path is None:
+                path=file_name
+            else:
+                path = "/".join( (directory_path,file_name))
+            blob_client = container_client.get_blob_client(path)
+            if blob_client.exists():
+                blob_client.delete_blob(delete_snapshots="include")
         
-            if wait:
-                time.sleep(1)
-                blob_client = container_client.get_blob_client(path)
-                check_if_exist = blob_client.exists()
-                while check_if_exist:
+                if wait:
                     time.sleep(1)
                     blob_client = container_client.get_blob_client(path)
                     check_if_exist = blob_client.exists()
+                    while check_if_exist:
+                        time.sleep(1)
+                        blob_client = container_client.get_blob_client(path)
+                        check_if_exist = blob_client.exists()
+        except ResourceNotFoundError as e:
+            raise BlobNotFound(f"File {file_name} not found in container {container_name}") from e
+        except HttpResponseError as e:
+            raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
                     
     def delete_files_by_prefix(self,container_name : str,directory_path : str,file_prefix:str, recursive:bool=False,wait:bool=True):
+        
         container_client = self.__service_client.get_container_client(container=container_name)
         if container_client.exists() is False:
             raise ContainerNotFound(f"Container {container_name} not found")
 
         files_exists = self.ls_files(container_name,directory_path,recursive)
-        logging.info(f"delete_files_by_prefix {container_name}/{directory_path}/{file_prefix} {recursive}")
         files = [f for f in files_exists if f.split("/")[-1].startswith(file_prefix)]
         for f in files:
             blob_client = container_client.get_blob_client(directory_path+"/"+f)
@@ -175,10 +186,7 @@ class Blob(StorageAccountVirtualClass):
                 files = [f for f in files_exists if f.split("/")[-1].startswith(file_prefix)]
         
     def delete_folder(self,container_name : str,directory_path : str,wait:bool=True):
-        logging.info(f"delete_files_by_prefix {container_name}/{directory_path}")
-        container_client = self.__service_client.get_container_client(container=container_name)
-        if container_client.exists() is False:
-            raise ContainerNotFound(f"Container {container_name} not found")
+
         
         list_files = self.ls_files(container_name,directory_path,True)
         for f in list_files:
@@ -193,91 +201,34 @@ class Blob(StorageAccountVirtualClass):
                 list_files = self.ls_files(container_name,directory_path,True)
                         
     def move_file(self,container_name : str,directory_path : str,file_name:str,new_container_name : str,new_directory_path : str,is_overwrite :bool=True,is_delete_source_file:bool=False):
-        try:
-            container_client = self.__service_client.get_container_client(container=container_name)
-            if container_client.exists() is False:
-                raise ContainerNotFound(f"Container source {container_name} not found")
-            container_client = self.__service_client.get_container_client(container=new_container_name)
-            if container_client.exists() is False:
-                raise ContainerNotFound(f"Container target {new_container_name} not found")
 
-            self.save_binary_file(self.read_binary_file(container_name,directory_path,file_name),new_container_name,new_directory_path,file_name,is_overwrite)
-            if is_delete_source_file:
-                self.delete_file(container_name ,directory_path ,file_name)
-        except ContainerNotFound as e:
-            raise e
-        except ResourceNotFoundError as e:
-            raise BlobNotFound(f"File {file_name} not found in container {container_name}") from e
-        except Exception as e:
-            raise Exception(f"Error moving file {file_name} in container {container_name} to container {new_container_name}") from e
+        self.save_binary_file(self.read_binary_file(container_name,directory_path,file_name),new_container_name,new_directory_path,file_name,is_overwrite)
+        if is_delete_source_file:
+            self.delete_file(container_name ,directory_path ,file_name)
+
             
     def move_folder(self,container_name : str,directory_path : str,new_container_name : str,new_directory_path : str,is_overwrite :bool=True,is_delete_source_folder:bool=False):
-        try:
-            container_client = self.__service_client.get_container_client(container=container_name)
-            if container_client.exists() == False:
-                raise ContainerNotFound(f"Container source {container_name} not found")
-            container_client = self.__service_client.get_container_client(container=new_container_name)
-            if container_client.exists() == False:
-                raise ContainerNotFound(f"Container target {container_name} not found")
-        
-            list_files = self.ls_files(container_name,directory_path,True)
 
-            for i in list_files:
-                self.move_file(container_name,directory_path,i,new_container_name,new_directory_path,is_overwrite,is_delete_source_folder)
-        except ContainerNotFound as e:
-            raise e
-        except Exception as e:
-            raise Exception(f"Error moving file {file_name} in container {container_name} to container {new_container_name}") from e
+        list_files = self.ls_files(container_name,directory_path,True)
+
+        for i in list_files:
+            self.move_file(container_name,directory_path,i,new_container_name,new_directory_path,is_overwrite,is_delete_source_folder)
 
         
     def rename_file(self,container_name : str,directory_path : str,file_name:str,newfile_name:str):
-        try:
-            container_client = self.__service_client.get_container_client(container=container_name)
-            if container_client.exists() is False:
-                raise ContainerNotFound(f"Container source {container_name} not found")
-
-            self.save_binary_file(self.read_binary_file(container_name,directory_path,file_name),container_name,directory_path,newfile_name,False)
-            self.delete_file(container_name ,directory_path ,file_name)
-        except ContainerNotFound as e:
-            raise e
-        except ResourceNotFoundError as e:
-            raise BlobNotFound(f"File {file_name} not found in container {container_name}") from e
-        except Exception as e:
-            raise Exception(f"Error moving folder {directory_path} in container {container_name}") from e
+        self.save_binary_file(self.read_binary_file(container_name,directory_path,file_name),container_name,directory_path,newfile_name,False)
+        self.delete_file(container_name ,directory_path ,file_name)
   
     def rename_folder(self,container_name : str,directory_path : str,new_directory_path:str):
-        try:
-            container_client = self.__service_client.get_container_client(container=container_name)
-            if container_client.exists() is False:
-                raise ContainerNotFound(f"Container source {container_name} not found")
-        
-            list_files = self.ls_files(container_name,directory_path,True)
-
-            for i in list_files:
-                self.move_file(container_name,directory_path,i,container_name,new_directory_path,False,True)
-        except ContainerNotFound as e:
-            raise e
-        except Exception as e:
-            raise Exception(f"Error moving folder {directory_path} in container {container_name}") from e
+        list_files = self.ls_files(container_name,directory_path,True)
+        for i in list_files:
+            self.move_file(container_name,directory_path,i,container_name,new_directory_path,False,True)
         
     def create_empty_file(self,container_name : str,directory_path:str,file_name:str):
-        try:
-            container_client = self.__service_client.get_container_client(container=container_name)
-            if directory_path!='':
-                directory_path=directory_path+'/'
-            path = directory_path +file_name
-            blob_client = container_client.get_blob_client(path)
-            blob_client.upload_blob('')
-        except ResourceNotFoundError as e:
-            raise ContainerNotFound(f"Container {container_name} not found") from e
-        except ResourceExistsError as e:
-            raise BlobAlreadyExists(f"File {file_name} already exists") from e
-        except Exception as e:
-            raise Exception(f"Error creating file {file_name} in container {container_name}") from e
+        self.save_binary_file(b'',container_name,directory_path,file_name,False)
 
     def create_container(self,container_name : str,public_access:CONTAINER_ACCESS_TYPES='Private'):
         try:
-            logging.info(f"create_container {container_name} {public_access}")
             container_client = self.__service_client.get_container_client(container=container_name)
             if not container_client.exists():
                 if public_access == "Private":
@@ -287,13 +238,13 @@ class Blob(StorageAccountVirtualClass):
                 self.__service_client.create_container(name=container_name,public_access=public_access_ )
         except ResourceExistsError as e:
             raise ContainerAccessTypes(f"Container access {public_access} is not allowe in {container_name}") from e
-        except Exception as e:
-            raise Exception(f"Error creating container {container_name}") from e
+        except HttpResponseError as e:
+            raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
+        
     def delete_container(self,container_name : str):
         try:
-            logging.info(f"delete_container {container_name}")
             container_client = self.__service_client.get_container_client(container=container_name)
             if container_client.exists():
                 container_client.delete_container()
-        except Exception as e:
-            raise Exception(f"Error deleting container {container_name}") from e
+        except HttpResponseError as e:
+            raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
