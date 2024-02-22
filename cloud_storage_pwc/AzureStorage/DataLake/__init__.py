@@ -1,24 +1,11 @@
 
-#from ast import main
 from ..StorageAccountVirtualClass import *
 
 from azure.storage.filedatalake import DataLakeServiceClient
 
 from azure.identity import DefaultAzureCredential
 from azure.identity import ClientSecretCredential
-#import pyarrow as pa
-#from io import BytesIO
-#import pyarrow.parquet as pq
-#import uuid
-#import os
-#import numpy as np 
-#import pandas as pd
-#from openpyxl import Workbook
-#from itertools import product
-#import polars as pl
 import time
-#from datetime import datetime
-#import csv
 from ..Utils import *
 from ..Exceptions import *
 import logging
@@ -30,30 +17,22 @@ class DataLake(StorageAccountVirtualClass):
         super().__init__()
         try:
             if access_key is not None and tenant_id is None and application_id is None and application_secret is None:
-                logging.info("DataLake-create by accesskey %s",url)
                 self.__service_client = DataLakeServiceClient(account_url=url, credential=access_key)
             elif access_key is  None and tenant_id is None and application_id is None and application_secret is None:
-                logging.info("DataLake-create by defaultazurecredential %s", url)
                 credential = DefaultAzureCredential()
                 self.__service_client = DataLakeServiceClient(account_url=url, credential=credential)
             elif access_key is  None and tenant_id is not None and application_id is not None and application_secret is not None:
-                logging.info("DataLake-create by clientsecretcredential %s", url)
                 token_credential = ClientSecretCredential(
                     tenant_id, application_id,application_secret)
                 self.__service_client = DataLakeServiceClient(account_url=url, credential=token_credential)
-            #self.__service_client.create_file_system("dev666")
-        #except ResourceNotFoundError as e:
-        #    logging.error(f"Storage account {url} not found")
-        #    raise StorageAccountNotFound(f"Storage account {url} not found") from e
-        #except HttpResponseError as e:
-        #    logging.error(f"Storage account {url} authorization error")
-        #    raise StorageAccountAuthenticationError(f"Storage account {url} authorization error") from e
-        except Exception as e:
-            raise e
-        
-        
-    def check_is_dfs(self)->bool:
-        return True
+            
+            container = self.__service_client.list_file_systems().next().name
+            if not self.__service_client.get_file_system_client(container).get_directory_client("/").exists():
+                raise DataLakeCreateError()
+        except ResourceNotFoundError as e:
+            raise StorageAccountNotFound(f"Storage account {url} not found") from e
+        except HttpResponseError as e:
+            raise StorageAccountAuthenticationError(f"Storage account {url} authorization error") from e
 
     def save_binary_file(self,input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True):
         file_system_client = self.__service_client.get_file_system_client(file_system=container_name)

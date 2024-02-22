@@ -1,29 +1,13 @@
-#from typing import override
-#from multiprocessing import AuthenticationError
-#import csv
-#from shutil import ExecError
-#from tkinter import E
-#import uuid
 import os
-from shutil import ExecError
-#from io import BytesIO
-#from itertools import product
 import time
 import logging
-#import numpy as np
-#import pandas as pd
-#import polars as pl
-#from  openpyxl import load_workbook
 from azure.storage.blob import BlobServiceClient
 from azure.identity import ClientSecretCredential
 from azure.identity import DefaultAzureCredential
 from azure.core.exceptions import HttpResponseError,ResourceNotFoundError,ResourceExistsError
 from ..Exceptions import *
-#import pyarrow as pa
-#import pyarrow.parquet as pq
 from ..StorageAccountVirtualClass import StorageAccountVirtualClass
 from ..Utils import *
-#from azure.storage.blob._shared.authentication import SharedKeyCredentialPolicy
 
 class Blob(StorageAccountVirtualClass):
     """
@@ -35,38 +19,20 @@ class Blob(StorageAccountVirtualClass):
         try:
             if access_key is not None and tenant_id is None and application_id is None \
                 and application_secret is None:
-                logging.info("Blob-create by accesskey %s",url)
                 self.__service_client = BlobServiceClient(account_url=url, credential=access_key,logging_enable=False)
             elif access_key is None and tenant_id is None and application_id is None \
                 and application_secret is None:
-                logging.info("Blob-create by defaultazurecredential %s", url)
                 credential = DefaultAzureCredential()
                 self.__service_client = BlobServiceClient(account_url=url, credential=credential,logging_enable=False)
             elif access_key is None and tenant_id is not None and application_id is not None \
                 and application_secret is not None:
-                logging.info("Blob-create by clientsecretcredential %s", url)
-                token_credential = ClientSecretCredential(tenant_id, application_id,
-                                                          application_secret)
+                token_credential = ClientSecretCredential(tenant_id, application_id,application_secret)
                 self.__service_client = BlobServiceClient(account_url=url,
                                                           credential=token_credential,logging_enable=False)
-            else:
-                raise Exception("dupa222")
-            #self.__service_client.get_service_properties()
         except ResourceNotFoundError as e:
-            logging.error(f"Storage account {url} not found")
             raise StorageAccountNotFound(f"Storage account {url} not found") from e
         except HttpResponseError as e:
-            logging.error(f"Storage account {url} authorization error")
             raise StorageAccountAuthenticationError(f"Storage account {url} authorization error") from e
-        #except 
-        #except Exception as e:
-        #    logging.critical(str(e))
-
-
-    def check_is_dfs(self) -> bool:
-        #account_info = self.__service_client.get_service_properties()
-        #return account_info['account_kind'] == 'StorageV2' and account_info['is_hns_enabled']
-        return True
 
     def ls_files(self, container_name:str, directory_path:str, recursive:bool=False) -> list:
         """

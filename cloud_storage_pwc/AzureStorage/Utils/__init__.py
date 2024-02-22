@@ -32,6 +32,15 @@ def add_tech_columns(df:[pd.DataFrame,pl.DataFrame],container_name: str=None,dir
     """
     Creates a container in the Azure Blob Storage.
     """
+    if directory_path is None or directory_path == "":
+        directory_path =  "/".join(file.split("/")[:-1])
+        file = file.removeprefix(directory_path+"/")
+    else:
+        directory_path_from_file =  "/".join(file.split("/")[:-1])
+        if directory_path_from_file != "":
+            directory_path = directory_path+"/"+directory_path_from_file
+            file = file.removeprefix(directory_path_from_file+"/")
+    
     if isinstance(df, pd.DataFrame):
         df['techContainer'] = container_name
         df['techFolderPath'] = directory_path

@@ -3,6 +3,12 @@
 class ContainerNotFound(Exception):
     """Raise for my specific kind of exception"""
     
+class DataLakeCreateError(Exception):
+    """Raise for my specific kind of exception"""
+    
+class BlobCreateError(Exception):
+    """Raise for my specific kind of exception"""
+    
 class StorageAccountNotFound(Exception):
     """Raise for my specific kind of exception"""
     

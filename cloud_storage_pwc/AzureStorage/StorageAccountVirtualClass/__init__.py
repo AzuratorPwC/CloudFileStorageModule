@@ -4,23 +4,15 @@ import pandas as pd
 import polars as pl
 from ..Utils import *
 from ..Exceptions import *
-#import pyarrow as pa
 from io import BytesIO
-#import pyarrow.parquet as pq
 import uuid
-#import os
 import numpy as np 
 import pandas as pd
-from openpyxl import Workbook
 from itertools import product
 import polars as pl
-#import time
-#from datetime import datetime
-#import csv
 from ..Utils import *
 from ..Exceptions import *
 import logging
-from azure.core.exceptions import HttpResponseError,ResourceNotFoundError,ResourceExistsError
 
 
 
@@ -47,8 +39,6 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 callable(subclass.rename_folder) and
                 hasattr(subclass, 'create_empty_file') and
                 callable(subclass.create_empty_file) and
-                hasattr(subclass, 'check_is_dfs') and
-                callable(subclass.check_is_dfs) and
                 hasattr(subclass, 'ls_files') and
                 callable(subclass.ls_files) and
                 hasattr(subclass, 'delete_files_by_prefix') and
@@ -119,16 +109,6 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Raises:
             ContainerNotFound: If the specified container does not exist.
             StorageErrorException: If there is an issue with the storage service.
-        """
-        raise NotImplementedError
-    
-    @abc.abstractmethod
-    def check_is_dfs(self)->bool:
-        """
-        Check if the Azure Blob Storage account is a Data Lake Storage Gen2 account.
-
-        Returns:
-            bool: True if the account is a Data Lake Storage Gen2 account, False otherwise.
         """
         raise NotImplementedError
     
