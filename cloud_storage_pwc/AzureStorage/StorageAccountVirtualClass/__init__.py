@@ -208,8 +208,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         else:
             raise FolderDataNotFound(f"Folder data {directory_path} not found in container {container_name}")
     
-    if isinstance(("aa","vdfdf"), list):
-        print("your object is a list !")
+
     
     def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine: ENGINE_TYPES ='polars',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets=None,is_check_sheet_exist:bool=False,tech_columns:bool=False):
         download_bytes = self.read_binary_file(container_name,directory_path,file_name)
@@ -282,6 +281,13 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             df = df.with_columns(pl.col(pl.Utf8).str.replace_all("\n", " "))
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
+        
+        col=[]
+        for c in df.columns:
+            col.append(c.replace("\n"," "))
+        df.columns = col
+
+       
        
         if partition_columns:
             partition_dict = {}

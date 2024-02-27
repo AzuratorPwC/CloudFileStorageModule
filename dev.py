@@ -4,14 +4,25 @@ from traceback import print_tb
 from cloud_storage_pwc import azure_storage
 from azure.storage.filedatalake import DataLakeServiceClient
 from azure.storage.blob import BlobServiceClient
+import pandas as pd
+import json
+
+
+sourcesheets_json = json.loads('["Zakres kont zmienne i stałe"]')
+
+print(sourcesheets_json[0])
+
 #aaa= DataLakeServiceClient(account_url="https://datakeeee2.blob.core.windows.net/", credential="xzwfPjunJa4vz+j7h/2NLDHgQ+BKKWF1zHmLb308zQAbznpQXiCU6MVmlJ0J9HMsL0P+04fYQ7NU+AStmGGBrg==")
 #aaa=azure_storage("datakeeee2","xzwfPjunJa4vz+j7h/2NLDHgQ+BKKWF1zHmLb308zQAbznpQXiCU6MVmlJ0J9HMsL0P+04fYQ7NU+AStmGGBrg==")
 
-#aaa=azure_storage("mystorageairflowdev","IdepCBLsltZ+1uLFOxk9jmqhnxMUziioFFODu6OCtQ/BjLBGnDVDftgEFACPKZ8kJIAfdTSLsEhe+AStk4KOMg==")
+aaa=azure_storage("mystorageairflowdev","IdepCBLsltZ+1uLFOxk9jmqhnxMUziioFFODu6OCtQ/BjLBGnDVDftgEFACPKZ8kJIAfdTSLsEhe+AStk4KOMg==")
 #cc=aaa.get_file_system_client("aaggg").get_directory_client("/").exists()
 #b=aaa.get_file_system_client("aaggg").get_directory_client("/").get_sub_directory_client("folder1").get_file_client("file2.txt").exists() #.get_file_client("file1.txt").rename_file("aaaa.b")
-#v=aaa.read_csv_folder("foldercheck1","folder1", delimiter=";",engine="pandas",recursive=True,is_first_row_as_header=True,tech_columns=True)
-#print(v)
+v=aaa.read_csv_folder("foldercheck1","folder1", delimiter=";",engine="pandas",recursive=True,is_first_row_as_header=True,tech_columns=True)
+
+v.columns = v.columns.str.replace('col', 'col \n ')
+print(v)
+aaa.save_dataframe_as_csv(v,"foldercheck1","folder1","plikcsvffff888.csv",engine="polars")
 #fs=aaa.get_file_system_client("aaggg").get_directory_client("/b").rename_directory
 
 #bbb=fs.get_directory_client("/")
@@ -20,11 +31,22 @@ from azure.storage.blob import BlobServiceClient
 #logging.debug('This will get logged')
 
 
-aa=azure_storage("strwebfazzabidev")
+#aa=azure_storage("strwebfazzabidev","T9xPYlyWbvERtuSOHCKe8FO8N+TgaxrrtFoOqo7xx1zN8LL4o1AdK2g/KwUBCatIVGqgiZELE7Oh+AStov5kzw==")
 
-dfs=aa.read_excel_file("webstage-dev","shp","dane.xlsx",engine="polars",sheets=("Sheet1","Dev"),tech_columns=True,is_first_row_as_header=True)
-print(dfs.keys())
-aa.save_dataframe_as_csv(dfs['Dev'],"webstage-dev","shp","dev12.csv",engine="pandas",is_first_row_as_header=False)
+#dfs=aa.read_excel_file("webstage-dev","shp","dane.xlsx",engine="polars",sheets=("Dev"),tech_columns=True,is_first_row_as_header=True)
+#aa.save_json_file(dfs,"webstage-dev","shp","dane11.json",engine="pandas",orient="records")
+
+
+#dfff=pd.read_json('plikjson.json', orient='records',lines=True)
+#print(dfff)
+#print(dfs)
+#aa.save_dataframe_as_csv(dfs['Dev'],"webstage-dev","shp","dev12.csv",engine="pandas",is_first_row_as_header=False)
+
+
+
+
+
+
 #vvv=aa.ls_files("webstage","",True)
 #print(vvv)
 #df=aa.read_csv_folder("webstage-dev","shp/DEBBUG/1", delimiter="◇",engine="pandas",is_first_row_as_header=True,tech_columns=False)
