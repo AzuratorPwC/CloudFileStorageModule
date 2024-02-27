@@ -278,13 +278,13 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         elif isinstance(df, pl.DataFrame):
             if df.is_empty():
                 return
-            df = df.with_columns(pl.col(pl.Utf8).str.replace_all("\n", " "))
+            df = df.with_columns(pl.col(pl.Utf8).str.replace_all('\n', ' '))
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
         
         col=[]
         for c in df.columns:
-            col.append(c.replace("\n"," "))
+            col.append(str(c).replace('\n',' '))
         df.columns = col
 
        

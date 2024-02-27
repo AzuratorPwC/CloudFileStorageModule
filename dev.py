@@ -21,6 +21,7 @@ aaa=azure_storage("mystorageairflowdev","IdepCBLsltZ+1uLFOxk9jmqhnxMUziioFFODu6O
 v=aaa.read_csv_folder("foldercheck1","folder1", delimiter=";",engine="pandas",recursive=True,is_first_row_as_header=True,tech_columns=True)
 
 v.columns = v.columns.str.replace('col', 'col \n ')
+
 print(v)
 aaa.save_dataframe_as_csv(v,"foldercheck1","folder1","plikcsvffff888.csv",engine="polars")
 #fs=aaa.get_file_system_client("aaggg").get_directory_client("/b").rename_directory
