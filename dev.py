@@ -8,6 +8,8 @@ import pandas as pd
 import json
 
 
+
+
 #sourcesheets_json = json.loads('["Zakres kont zmienne i stałe"]')
 
 #print(sourcesheets_json[0])
@@ -16,11 +18,15 @@ import json
 #aaa=azure_storage("datakeeee2","xzwfPjunJa4vz+j7h/2NLDHgQ+BKKWF1zHmLb308zQAbznpQXiCU6MVmlJ0J9HMsL0P+04fYQ7NU+AStmGGBrg==")
 
 aaa=azure_storage("strwebfazzabidev","T9xPYlyWbvERtuSOHCKe8FO8N+TgaxrrtFoOqo7xx1zN8LL4o1AdK2g/KwUBCatIVGqgiZELE7Oh+AStov5kzw==")
+
+aaa.delete_files_by_prefix("webstage-dev","shp/dane153","aaa_")
+#bb=aaa.ls_files("webstage-dev","shp/dane153",True)
+
 #cc=aaa.get_file_system_client("aaggg").get_directory_client("/").exists()
 #b=aaa.get_file_system_client("aaggg").get_directory_client("/").get_sub_directory_client("folder1").get_file_client("file2.txt").exists() #.get_file_client("file1.txt").rename_file("aaaa.b")
 #v=aaa.read_csv_folder("foldercheck1","folder1", delimiter=";",engine="pandas")
-print(aaa.__class__.__name__)
-vv=aaa.delete_folder("webstage-dev","shp/dane154")
+#print(aaa.__class__.__name__)
+#vv=aaa.delete_folder("webstage-dev","shp/dane153",True)
 
 #print(vv.get_directory_properties())
 

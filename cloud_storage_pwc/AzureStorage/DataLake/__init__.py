@@ -124,7 +124,6 @@ class DataLake(StorageAccountVirtualClass):
     def delete_files_by_prefix(self,container_name : str,directory_path : str,file_prefix:str, recursive:bool=False,wait:bool=True):
             
         files_exists = self.ls_files(container_name,directory_path,recursive)
-
         files = [f for f in files_exists if f.split("/")[-1].startswith(file_prefix)]
         for f in files:
             self.delete_file(container_name,f.removesuffix(f"/{f.split('/')[-1]}"),f.split("/")[-1])
@@ -204,13 +203,17 @@ class DataLake(StorageAccountVirtualClass):
             if file_system_client.exists() is False:
                 raise ContainerNotFound(f"Container {container_name} not found")
 
+            files = []
             if directory_path=="":
                 directory_path="/"
-            files = []
-            generator = file_system_client.get_paths(path=directory_path, recursive=recursive)
-            for file in generator:
-                if file.is_directory is False:
-                    files.append(file.name)
+            else:
+                main_directory = file_system_client.get_directory_client("/")
+                main_directory = main_directory.get_sub_directory_client(directory_path)
+                if main_directory.exists():
+                    generator = file_system_client.get_paths(path=directory_path, recursive=recursive)
+                    for file in generator:
+                        if file.is_directory is False:
+                            files.append(file.name)
             return files
         except HttpResponseError as e:
             raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
