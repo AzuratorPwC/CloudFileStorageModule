@@ -1,4 +1,5 @@
 
+
 from ..StorageAccountVirtualClass import *
 
 from azure.storage.filedatalake import DataLakeServiceClient
@@ -26,18 +27,19 @@ class DataLake(StorageAccountVirtualClass):
                     tenant_id, application_id,application_secret)
                 self.__service_client = DataLakeServiceClient(account_url=url, credential=token_credential)
             
-            containers = self.__service_client.list_file_systems()
+            containers = self.__service_client.list_file_systems()     
+            con_num=len(list(containers))
             dfs = False
-            if len(list(containers)) != 0:
-                for container in containers:
-                    try:
-                        if self.__service_client.get_file_system_client(container.name).get_directory_client("/").exists():
-                            dfs = True
-                            break
-                    except HttpResponseError:
-                        a=1
-            else:
-                dfs = True
+            if con_num > 0:     
+                for page in containers.by_page():
+                    for con in page:
+                        try:
+                            
+                            if self.__service_client.get_file_system_client(con.name).get_directory_client("/").exists():
+                                dfs = True
+                                break
+                        except HttpResponseError:
+                            dfs = False
             
             if dfs is False:
                 raise DataLakeCreateError()
@@ -141,10 +143,13 @@ class DataLake(StorageAccountVirtualClass):
             file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
             if file_system_client.exists() is False:
                 raise ContainerNotFound(f"Container {container_name} not found")
-            
             main_directory = file_system_client.get_directory_client("/")
+            
             if directory_path != "":
                 main_directory = main_directory.get_sub_directory_client(directory_path)
+            
+              
+         
             if main_directory.exists():
                 main_directory.delete_directory()
                 main_directory = main_directory.get_sub_directory_client(directory_path)

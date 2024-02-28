@@ -51,7 +51,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
 
 
     @classmethod
-    def read_csv_bytes(cls,input_bytes:bytes,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8", delimiter :DELIMITER_TYPES= ',',is_first_row_as_header :bool= False,skip_rows:int=0, skip_blank_lines = True,quoting:QUOTING_TYPES=None):
+    def read_csv_bytes(cls,input_bytes:bytes,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8", delimiter :str= ',',is_first_row_as_header :bool= False,skip_rows:int=0, skip_blank_lines = True,quoting:QUOTING_TYPES=None):
         """Class representing a StorageAccountVirtualClass"""
         if engine == 'pandas':
             if quoting is not None:
@@ -154,7 +154,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
 
     def read_csv_file(self, container_name:str, directory_path:str, file_name:str,
                       engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8",
-                      delimiter:DELIMITER_TYPES=',', is_first_row_as_header:bool=False,
+                      delimiter:str=',', is_first_row_as_header:bool=False,
                       skip_rows:int=0, skip_blank_lines=True,quoting:QUOTING_TYPES=None, tech_columns:bool=False):
         """
         Read a CSV file from an Azure Blob Storage container and return the data as a DataFrame.
@@ -167,7 +167,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 Defaults to 'polars'.
             encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
                 to "UTF-8".
-            delimiter (DELIMITER_TYPES, optional): The delimiter used in the CSV file.
+            delimiter (str, optional): The delimiter used in the CSV file.
                 Defaults to ','.
             is_first_row_as_header (bool, optional): Flag indicating whether the first row is
                 a header. Defaults to False.
@@ -188,7 +188,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             df =  add_tech_columns(df,container_name,directory_path.replace("\\","/"),file_name)
         return df
     
-    def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8", delimiter:DELIMITER_TYPES = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:QUOTING_TYPES=None,tech_columns:bool=False,recursive:bool=False):
+    def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8", delimiter:str = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:QUOTING_TYPES=None,tech_columns:bool=False,recursive:bool=False):
         list_files = self.ls_files(container_name,directory_path, recursive=recursive)
         df = None
         if list_files:
@@ -266,7 +266,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         return list_of_dff
     
     
-    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:DELIMITER_TYPES = ";",is_first_row_as_header:bool = True,quoting:QUOTING_TYPES=None,escape:ESCAPE_TYPES=None, engine: ENGINE_TYPES ='polars'):
+    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:str = ";",is_first_row_as_header:bool = True,quoting:QUOTING_TYPES=None,escape:ESCAPE_TYPES=None, engine: ENGINE_TYPES ='polars'):
         
         if isinstance(df, pd.DataFrame):
             if df.empty:

@@ -29,6 +29,24 @@ class Blob(StorageAccountVirtualClass):
                 token_credential = ClientSecretCredential(tenant_id, application_id,application_secret)
                 self.__service_client = BlobServiceClient(account_url=url,
                                                           credential=token_credential,logging_enable=False)
+                
+            containers = self.__service_client.list_containers()     
+            con_num=len(list(containers))
+            blob = False
+            if con_num > 0:  
+                for page in containers.by_page():
+                    for con in page:
+                        try:                     
+                            blobs=self.__service_client.get_container_client(con.name).list_blob_names()
+                            b=blobs.by_page().__next__()
+                            blob=True
+                            break
+                        except HttpResponseError:
+                            blob = False
+                    if blob:
+                        break
+            if blob is False:
+                raise DataLakeCreateError()
         except ResourceNotFoundError as e:
             raise StorageAccountNotFound(f"Storage account {url} not found") from e
         except HttpResponseError as e:

@@ -3,7 +3,7 @@ import pandas as pd
 import polars as pl
 
 ENGINE_TYPES = Literal['pandas', 'polars']
-DELIMITER_TYPES = Literal[';', '^','~',',','\t','|','◇','◆',' ']
+#DELIMITER_TYPES = Literal[';', '^','~',',','\t','|','◇','◆',' ']
 QUOTING_TYPES = Literal['"','|','~','^']
 ESCAPE_TYPES = Literal['\\','|','~','^']
 #QUOTING_TYPES = Literal['QUOTE_MINIMAL', 'QUOTE_ALL','QUOTE_NONNUMERIC','QUOTE_NONE']
