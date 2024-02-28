@@ -282,10 +282,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
         
-        col=[]
-        for c in df.columns:
-            col.append(str(c).replace('\n',' '))
-        df.columns = col
+        
 
        
        
