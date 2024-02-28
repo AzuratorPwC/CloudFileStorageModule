@@ -152,13 +152,13 @@ class DataLake(StorageAccountVirtualClass):
          
             if main_directory.exists():
                 main_directory.delete_directory()
-                main_directory = main_directory.get_sub_directory_client(directory_path)
+                #main_directory = main_directory.get_sub_directory_client(directory_path)
                 if wait:
                     time.sleep(1)
                     dict_exists = main_directory.exists()
                     while dict_exists:
                         time.sleep(1)
-                        main_directory = main_directory.get_sub_directory_client(directory_path)
+                        #main_directory = main_directory.get_sub_directory_client(directory_path)
                         dict_exists = main_directory.exists()
         except HttpResponseError as e:
             raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e

@@ -282,10 +282,6 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
         
-        
-
-       
-       
         if partition_columns:
             partition_dict = {}
             for x in partition_columns:
