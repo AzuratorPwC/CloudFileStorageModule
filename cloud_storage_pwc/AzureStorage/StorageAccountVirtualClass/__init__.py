@@ -704,6 +704,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
     
+
     def save_json_file(self, df, container_name: str, directory_path: str, file_name:str = None, engine: ENGINE_TYPES ='polars', orient:ORIENT_TYPES= 'records'):
         """
         Saves a Pandas or Polars DataFrame to a JSON file in Azure Blob Storage.
@@ -768,3 +769,67 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             list: A list of file paths relative to the specified directory.
         """
         raise NotImplementedError
+
+    @classmethod
+    def read_json_bytes(cls,input_bytes:bytes, orient: ORIENT_TYPES = 'records', engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8",quoting:QUOTING_TYPES=None):
+        """Class representing a StorageAccountVirtualClass"""
+        if engine == 'pandas':
+            if quoting is not None:
+                df = pd.read_json(BytesIO(input_bytes), quoting=1, quotechar=quoting, dtype='str',
+                    encoding=encoding, orient=orient)
+            else:
+                df = pd.read_json(BytesIO(input_bytes),dtype='str',
+                    encoding=encoding, orient=orient)
+        elif engine =='polars':
+            df = pl.read_json(BytesIO(input_bytes)) # infer_schema_length=0, encoding=encoding, null_values=NAN_VALUES, quote_char=quoting
+        return df
+
+    def read_json_file(self, container_name:str, directory_path:str, file_name:str, orient: ORIENT_TYPES = 'records',
+                      engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8", quoting:QUOTING_TYPES=None, tech_columns:bool=False):
+        """
+        Read a JSON file from an Azure Blob Storage container and return the data as a DataFrame.
+
+        Args:
+            container_name (str): The name of the Azure Blob Storage container.
+            directory_path (str): The path within the container where the CSV file is located.
+            sourcefile_name (str): The name of the CSV file to be read.
+            engine (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars').
+                Defaults to 'polars'.
+            encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
+                to "UTF-8".
+            tech_columns (bool, optional): Flag indicating whether to add technical columns (e.g.,
+                file path and name). Defaults to False.
+
+        Returns:
+            DataFrame: A DataFrame containing the data from the CSV file.
+        """  
+        download_bytes = self.read_binary_file(container_name,directory_path,file_name)
+        df = self.read_json_bytes(download_bytes, orient, engine, encoding, quoting=quoting)
+        
+        if tech_columns:
+            df =  add_tech_columns(df,container_name,directory_path.replace("\\","/"),file_name)
+        return df
+    
+    def read_json_folder(self,container_name:str,directory_path:str,orient: ORIENT_TYPES = 'records',
+                         engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8",quoting:QUOTING_TYPES=None,tech_columns:bool=False,recursive:bool=False):
+        list_files = self.ls_files(container_name,directory_path, recursive=recursive)
+        df = None
+        if list_files:
+            for f in list_files:
+                try:
+                    df_new = self.read_json_file(container_name,directory_path,str(f).removeprefix(directory_path),orient,engine,encoding,quoting, tech_columns)
+                    if engine=='pandas':
+                        if df is None:
+                            df = df_new
+                        else:
+                            df = pd.concat([df, df_new], axis=0, join="outer", ignore_index=True)
+                    elif engine =='polars':
+                        if df is None:
+                            df = df_new
+                        else:
+                            df = pl.concat([df, df_new])
+                except:
+                    print("Failed to read file " + f)
+            return df
+        else:
+            raise FolderDataNotFound(f"Folder data {directory_path} not found in container {container_name}")
