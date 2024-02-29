@@ -1,7 +1,7 @@
 import pytest
 #from src.cloud_storage_pwc.AzureStorage.Exceptions import StorageAccountNotFound,StorageAccountAuthenticationError
 #from src.cloud_storage_pwc.AzureStorage import Blob
-from src import azure_storage
+from cloud_storage_pwc import azure_storage
 from azure.storage.blob import BlobServiceClient
 
 

@@ -1,5 +1,4 @@
-from tabnanny import check
-from src import azure_storage
+from cloud_storage_pwc import azure_storage
 from azure.storage.blob import BlobServiceClient
 import pytest
 
