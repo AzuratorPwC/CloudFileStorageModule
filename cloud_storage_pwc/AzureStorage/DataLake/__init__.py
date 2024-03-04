@@ -16,113 +16,149 @@ class DataLake(StorageAccountVirtualClass):
  
     def __init__(self, url:str, access_key:str=None, tenant_id:str=None, application_id:str=None,application_secret:str=None):
         super().__init__()
-        try:
-            if access_key is not None and tenant_id is None and application_id is None and application_secret is None:
-                self.__service_client = DataLakeServiceClient(account_url=url, credential=access_key)
-            elif access_key is  None and tenant_id is None and application_id is None and application_secret is None:
-                credential = DefaultAzureCredential()
-                self.__service_client = DataLakeServiceClient(account_url=url, credential=credential)
-            elif access_key is  None and tenant_id is not None and application_id is not None and application_secret is not None:
-                token_credential = ClientSecretCredential(
-                    tenant_id, application_id,application_secret)
-                self.__service_client = DataLakeServiceClient(account_url=url, credential=token_credential)
-            
-            containers = self.__service_client.list_file_systems()     
-            con_num=len(list(containers))
-            dfs = False
-            if con_num > 0:     
-                for page in containers.by_page():
-                    for con in page:
-                        try:
-                            
-                            if self.__service_client.get_file_system_client(con.name).get_directory_client("/").exists():
-                                dfs = True
-                                break
-                        except HttpResponseError:
-                            dfs = False
-            
-            if dfs is False:
-                raise DataLakeCreateError()
-        except ResourceNotFoundError as e:
-            raise StorageAccountNotFound(f"Storage account {url} not found") from e
-        except HttpResponseError as e:
-            raise StorageAccountAuthenticationError(f"Storage account {url} authorization error") from e
+        tries=3
+        for i in range(tries):
+            try:
+                try:
+                    if access_key is not None and tenant_id is None and application_id is None and application_secret is None:
+                        self.__service_client = DataLakeServiceClient(account_url=url, credential=access_key)
+                    elif access_key is  None and tenant_id is None and application_id is None and application_secret is None:
+                        credential = DefaultAzureCredential()
+                        self.__service_client = DataLakeServiceClient(account_url=url, credential=credential)
+                    elif access_key is  None and tenant_id is not None and application_id is not None and application_secret is not None:
+                        token_credential = ClientSecretCredential(
+                            tenant_id, application_id,application_secret)
+                        self.__service_client = DataLakeServiceClient(account_url=url, credential=token_credential)
+                    
+                    containers = self.__service_client.list_file_systems()     
+                    con_num=len(list(containers))
+                    dfs = False
+                    if con_num > 0:     
+                        for page in containers.by_page():
+                            for con in page:
+                                try:
+                                    
+                                    if self.__service_client.get_file_system_client(con.name).get_directory_client("/").exists():
+                                        dfs = True
+                                        break
+                                except HttpResponseError:
+                                    dfs = False
+                    
+                    if dfs is False:
+                        raise DataLakeCreateError()
+                    break
+                except ResourceNotFoundError as e:
+                    raise StorageAccountNotFound(f"Storage account {url} not found") from e
+                except HttpResponseError as e:
+                    raise StorageAccountAuthenticationError(f"Storage account {url} authorization error") from e
+            except:
+                if i==tries-1:
+                    raise
+                time.sleep(1)
+                continue
 
-    def save_binary_file(self,input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True):
+    def save_binary_file(self,input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True,tries:int=3):
         
-        try:
-            file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
-            if file_system_client.exists() is False:
-                raise ContainerNotFound(f"Container {container_name} not found")
-            main_directory_client = file_system_client.get_directory_client("/")
-            if directory_path =="":
-                file_client = main_directory_client.get_file_client(file_name)
-            else:
-                subdir_client = main_directory_client.get_sub_directory_client(directory_path)
-                if subdir_client.exists() is False:
-                    subdir_client.create_directory()
-                file_client = subdir_client.get_file_client(file_name)
-        #content_settings = ContentSettings(content_encoding=encoding,content_type = "text/csv")
-            file_client.upload_data(bytes(input_bytes),overwrite=is_overwrite)
-        except HttpResponseError as e:
-            raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
+        for i in range(tries):
+            try:
+                try:
+                    file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
+                    if file_system_client.exists() is False:
+                        raise ContainerNotFound(f"Container {container_name} not found")
+                    main_directory_client = file_system_client.get_directory_client("/")
+                    if directory_path =="":
+                        file_client = main_directory_client.get_file_client(file_name)
+                    else:
+                        subdir_client = main_directory_client.get_sub_directory_client(directory_path)
+                        if subdir_client.exists() is False:
+                            subdir_client.create_directory()
+                        file_client = subdir_client.get_file_client(file_name)
+                #content_settings = ContentSettings(content_encoding=encoding,content_type = "text/csv")
+                    file_client.upload_data(bytes(input_bytes),overwrite=is_overwrite)
+                    
+                    break
+                except HttpResponseError as e:
+                    raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
+            except:
+                if i==tries-1:
+                    raise
+                time.sleep(1)
+                continue
     
-    def read_binary_file(self, container_name:str, directory_path:str, file_name:str)->bytes:
+    def read_binary_file(self, container_name:str, directory_path:str, file_name:str,tries:int=3)->bytes:
         
-        try:
-            file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
-            if file_system_client.exists() is False:
-                raise ContainerNotFound(f"Container {container_name} not found")
-            valid_file=False
-            main_directory_client = file_system_client.get_directory_client("/")
-            if directory_path =="":
-                file_client = main_directory_client.get_file_client(file_name)
-                if  file_client.exists():
-                    valid_file=True
-            else:
-                subdir_client = main_directory_client.get_sub_directory_client(directory_path)
-                if subdir_client.exists() is True:
-                    file_client = subdir_client.get_file_client(file_name)
+        
+        for i in range(tries):
+            try:
+                try:
+                    file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
+                    if file_system_client.exists() is False:
+                        raise ContainerNotFound(f"Container {container_name} not found")
+                    valid_file=False
+                    main_directory_client = file_system_client.get_directory_client("/")
+                    if directory_path =="":
+                        file_client = main_directory_client.get_file_client(file_name)
+                        if  file_client.exists():
+                            valid_file=True
+                    else:
+                        subdir_client = main_directory_client.get_sub_directory_client(directory_path)
+                        if subdir_client.exists() is True:
+                            file_client = subdir_client.get_file_client(file_name)
+                            if file_client.exists():
+                                valid_file=True
+                    
+                    if valid_file:
+                        download = file_client.download_file()
+                        download_bytes = download.readall()
+                    else:
+                        raise BlobNotFound(f"{container_name}/{directory_path}/{file_name} not found")
+                    return download_bytes
+                except HttpResponseError as e:
+                    raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
+            except:
+                if i==tries-1:
+                    raise
+                time.sleep(1)
+                continue
+    
+    
+    def delete_file(self,container_name : str,directory_path : str,file_name:str,wait:bool=True,tries:int=3):
+
+        for i in range(tries):
+            try:
+                try:
+                    file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
+                    if file_system_client.exists() is False:
+                        raise ContainerNotFound(f"Container {container_name} not found")
+                    
+                    main_directory = file_system_client.get_directory_client("/")
+                    if directory_path != "":
+                        main_directory = main_directory.get_sub_directory_client(directory_path)
+                    
+                    file_client= main_directory.get_file_client(file_name)
                     if file_client.exists():
-                        valid_file=True
-            
-            if valid_file:
-                download = file_client.download_file()
-                download_bytes = download.readall()
-            else:
-                raise BlobNotFound(f"{container_name}/{directory_path}/{file_name} not found")
-            return download_bytes
-        except HttpResponseError as e:
-            raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
-    
-    
-    def delete_file(self,container_name : str,directory_path : str,file_name:str,wait:bool=True):
-
-        try:
-            file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
-            if file_system_client.exists() is False:
-                raise ContainerNotFound(f"Container {container_name} not found")
-            
-            main_directory = file_system_client.get_directory_client("/")
-            if directory_path != "":
-                main_directory = main_directory.get_sub_directory_client(directory_path)
-            
-            file_client= main_directory.get_file_client(file_name)
-            if file_client.exists():
-                file_client.delete_file()
-                   
-            if wait:
-                check_if_exist = file_client.exists()
-                while check_if_exist:
-                    time.sleep(1)
-                    check_if_exist = file_client.exists()
-        except HttpResponseError as e:
-            raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
+                        file_client.delete_file()
+                        
+                    if wait:
+                        check_if_exist = file_client.exists()
+                        while check_if_exist:
+                            time.sleep(1)
+                            check_if_exist = file_client.exists()
+                            
+                    break
+                except HttpResponseError as e:
+                    raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
+            except:
+                if i==tries-1:
+                    raise
+                time.sleep(1)
+                continue
                             
                             
                             
     def delete_files_by_prefix(self,container_name : str,directory_path : str,file_prefix:str, recursive:bool=False,wait:bool=True):
             
+        
         files_exists = self.ls_files(container_name,directory_path,recursive)
         files = [f for f in files_exists if f.split("/")[-1].startswith(file_prefix)]
         for f in files:
@@ -197,27 +233,34 @@ class DataLake(StorageAccountVirtualClass):
         if is_delete_source_file:
             self.delete_file(container_name ,directory_path ,file_name)
 
-    def ls_files(self, container_name:str, directory_path:str, recursive:bool=False)->list:
-        try:
-            file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
-            if file_system_client.exists() is False:
-                raise ContainerNotFound(f"Container {container_name} not found")
-
-            files = []
-            if directory_path=="":
-                directory_path="/"
-            else:
-                main_directory = file_system_client.get_directory_client("/")
-                main_directory = main_directory.get_sub_directory_client(directory_path)
-                if main_directory.exists():
-                    generator = file_system_client.get_paths(path=directory_path, recursive=recursive)
-                    for file in generator:
-                        if file.is_directory is False:
-                            files.append(file.name)
-            return files
-        except HttpResponseError as e:
-            raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
+    def ls_files(self, container_name:str, directory_path:str, recursive:bool=False,tries:int=3)->list:
         
+        for i in range(tries):
+            try:
+                try:
+                    file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
+                    if file_system_client.exists() is False:
+                        raise ContainerNotFound(f"Container {container_name} not found")
+
+                    files = []
+                    if directory_path=="":
+                        directory_path="/"
+                    else:
+                        main_directory = file_system_client.get_directory_client("/")
+                        main_directory = main_directory.get_sub_directory_client(directory_path)
+                        if main_directory.exists():
+                            generator = file_system_client.get_paths(path=directory_path, recursive=recursive)
+                            for file in generator:
+                                if file.is_directory is False:
+                                    files.append(file.name)
+                    return files
+                except HttpResponseError as e:
+                    raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
+            except:
+                if i==tries-1:
+                    raise
+                time.sleep(1)
+                continue
         
     def move_folder(self,container_name : str,directory_path : str,new_container_name : str,new_directory_path : str,is_overwrite :bool=True,is_delete_source_folder:bool=False)->bool:      
         
