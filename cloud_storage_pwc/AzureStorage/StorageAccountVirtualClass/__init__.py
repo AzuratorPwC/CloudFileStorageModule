@@ -275,7 +275,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             df = df.replace('\n', ' ', regex=True)
             #if not (df.filter(regex=r'^\s*$').empty and df.filter(items=NAN_VALUES_REGEX_PANDAS).empty):
             df = df.astype(str)
-            df = df.replace(regex=NAN_VALUES_REGEX_PANDAS, value="",regex=True)
+            df = df.replace(regex=NAN_VALUES_REGEX_PANDAS, value="")
             
             #df = df.replace(NAN_VALUES_REGEX_PANDAS, '', regex=True)
             if engine != 'pandas':
