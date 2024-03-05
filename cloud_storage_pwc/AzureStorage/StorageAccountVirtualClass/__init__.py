@@ -1,4 +1,5 @@
 import abc
+from atexit import register
 from io import BytesIO
 import pandas as pd
 import polars as pl
@@ -58,20 +59,20 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 df = pd.read_csv(BytesIO(input_bytes),sep=delimiter,quoting=1,quotechar=quoting,engine="python",dtype='str',
                     header= 0 if is_first_row_as_header is True else None ,
                     encoding=encoding,skiprows=skip_rows,keep_default_na=False,
-                    na_values=NAN_VALUES,skip_blank_lines=skip_blank_lines)
+                    na_values=NAN_VALUES_REGEX_PANDAS,skip_blank_lines=skip_blank_lines)
             else:
                 df = pd.read_csv(BytesIO(input_bytes),sep=delimiter,engine="python",dtype='str',
                     header= 0 if is_first_row_as_header is True else None ,
                     encoding=encoding,skiprows=skip_rows,keep_default_na=False,
-                    na_values=NAN_VALUES,skip_blank_lines=skip_blank_lines)
+                    na_values=NAN_VALUES_REGEX_PANDAS,skip_blank_lines=skip_blank_lines)
                     
         elif engine =='polars':
             if quoting is not None:
                 df = pl.read_csv(BytesIO(input_bytes),separator=delimiter,has_header=is_first_row_as_header,encoding=encoding,
-                        skip_rows=skip_rows,null_values=NAN_VALUES,infer_schema_length=0,quote_char=quoting,)
+                        skip_rows=skip_rows,null_values=NAN_VALUES_REGEX_PANDAS,infer_schema_length=0,quote_char=quoting,)
             else:
                 df = pl.read_csv(BytesIO(input_bytes),separator=delimiter,has_header=is_first_row_as_header,encoding=encoding,
-                        skip_rows=skip_rows,null_values=NAN_VALUES,infer_schema_length=0)
+                        skip_rows=skip_rows,null_values=NAN_VALUES_REGEX_PANDAS,infer_schema_length=0)
         return df
 
     def read_parquet_bytes(self,input_bytes:bytes,engine:ENGINE_TYPES ='pandas',columns:list=None):
@@ -272,9 +273,10 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             if df.empty:
                 return
             df = df.replace('\n', ' ', regex=True)
-            if not (df.filter(regex=r'^\s*$').empty and df.filter(items=NAN_VALUES_REGEX_PANDAS).empty):
-                df = df.replace(regex=NAN_VALUES_REGEX_PANDAS, value="")
+            #if not (df.filter(regex=r'^\s*$').empty and df.filter(items=NAN_VALUES_REGEX_PANDAS).empty):
             df = df.astype(str)
+            df = df.replace(regex=NAN_VALUES_REGEX_PANDAS, value="",regex=True)
+            
             #df = df.replace(NAN_VALUES_REGEX_PANDAS, '', regex=True)
             if engine != 'pandas':
                 df = pl.from_pandas(df)
