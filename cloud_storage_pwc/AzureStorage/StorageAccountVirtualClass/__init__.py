@@ -59,20 +59,20 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 df = pd.read_csv(BytesIO(input_bytes),sep=delimiter,quoting=1,quotechar=quoting,engine="python",dtype='str',
                     header= 0 if is_first_row_as_header is True else None ,
                     encoding=encoding,skiprows=skip_rows,keep_default_na=False,
-                    na_values=NAN_VALUES_REGEX_PANDAS,skip_blank_lines=skip_blank_lines)
+                    na_values=NAN_VALUES_REGEX,skip_blank_lines=skip_blank_lines)
             else:
                 df = pd.read_csv(BytesIO(input_bytes),sep=delimiter,engine="python",dtype='str',
                     header= 0 if is_first_row_as_header is True else None ,
                     encoding=encoding,skiprows=skip_rows,keep_default_na=False,
-                    na_values=NAN_VALUES_REGEX_PANDAS,skip_blank_lines=skip_blank_lines)
+                    na_values=NAN_VALUES_REGEX,skip_blank_lines=skip_blank_lines)
                     
         elif engine =='polars':
             if quoting is not None:
                 df = pl.read_csv(BytesIO(input_bytes),separator=delimiter,has_header=is_first_row_as_header,encoding=encoding,
-                        skip_rows=skip_rows,null_values=NAN_VALUES_REGEX_PANDAS,infer_schema_length=0,quote_char=quoting,)
+                        skip_rows=skip_rows,null_values=NAN_VALUES_REGEX,infer_schema_length=0,quote_char=quoting,)
             else:
                 df = pl.read_csv(BytesIO(input_bytes),separator=delimiter,has_header=is_first_row_as_header,encoding=encoding,
-                        skip_rows=skip_rows,null_values=NAN_VALUES_REGEX_PANDAS,infer_schema_length=0)
+                        skip_rows=skip_rows,null_values=NAN_VALUES_REGEX,infer_schema_length=0)
         return df
 
     def read_parquet_bytes(self,input_bytes:bytes,engine:ENGINE_TYPES ='pandas',columns:list=None):
@@ -272,20 +272,21 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         if isinstance(df, pd.DataFrame):
             if df.empty:
                 return
-            df = df.replace('\n', ' ', regex=True)
-            #if not (df.filter(regex=r'^\s*$').empty and df.filter(items=NAN_VALUES_REGEX_PANDAS).empty):
+            df = df.replace('\r\n', ' ', regex=True).replace('\n', ' ', regex=True)
+            #if not (df.filter(regex=r'^\s*$').empty and df.filter(items=NAN_VALUES_REGEX).empty):
             df = df.astype(str)
-            df = df.replace(regex=NAN_VALUES_REGEX_PANDAS, value="")
+            df = df.replace(regex=NAN_VALUES_REGEX, value="")
             
-            #df = df.replace(NAN_VALUES_REGEX_PANDAS, '', regex=True)
+            #df = df.replace(NAN_VALUES_REGEX, '', regex=True)
             if engine != 'pandas':
                 df = pl.from_pandas(df)
 
         elif isinstance(df, pl.DataFrame):
             if df.is_empty():
                 return
+            df = df.with_columns(pl.col(pl.Utf8).str.replace_all('\r\n', ' '))
             df = df.with_columns(pl.col(pl.Utf8).str.replace_all('\n', ' '))
-            for x in NAN_VALUES_REGEX_PANDAS:
+            for x in NAN_VALUES_REGEX:
                 df = df.with_columns(pl.col(pl.Utf8).str.replace_all(x, ''))
             
             #df=df.with_columns(pl.exclude(pl.Utf8).cast(str))

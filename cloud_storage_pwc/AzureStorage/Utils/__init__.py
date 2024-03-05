@@ -12,13 +12,8 @@ ENCODING_TYPES = Literal['UTF-8', 'UTF-16']
 COMPRESSION_TYPES = Literal['snappy', 'gzip', 'brotli']
 ORIENT_TYPES = Literal['records', 'columns']
 CONTAINER_ACCESS_TYPES = Literal['Container', 'Blob','Private']
-NAN_VALUES_REGEX_PANDAS = [np.nan,  '#N/A', '#N/A','N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan',
-        '1.#IND', '1.#QNAN',
-        '<NA>', 'NA', 'NULL', 'NaN', 'n/a', 'nan', 'null','none',"NONE",'None'] #,r'^\s*$']
-
-NAN_VALUES_REGEX_POLARS = "?(i)#N/A|#N/A|N/A|#NA|-1.#IND|-1.#QNAN|-NaN|-nan|1.#IND|1.#QNAN|<NA>|NA|NULL|NaN|n/a|nan|null|none|NONE|None"
-
-
+NAN_VALUES_REGEX = [np.nan, '#N/A','N/A', '#NA', '-NaN', '-nan',
+        '<NA>', 'NA', 'NULL', 'NaN', 'n/a', 'nan', 'null','none',"NONE",'None' ,r'^\s*$']
 
 class Utils:
     pass
