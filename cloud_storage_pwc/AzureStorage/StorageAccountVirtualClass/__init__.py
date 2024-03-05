@@ -274,6 +274,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             df = df.replace('\n', ' ', regex=True)
             if not (df.filter(regex=r'^\s*$').empty and df.filter(items=NAN_VALUES_REGEX_PANDAS).empty):
                 df = df.replace(regex=NAN_VALUES_REGEX_PANDAS, value="")
+            df = df.astype(str)
             #df = df.replace(NAN_VALUES_REGEX_PANDAS, '', regex=True)
             if engine != 'pandas':
                 df = pl.from_pandas(df)
@@ -282,7 +283,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             if df.is_empty():
                 return
             df = df.with_columns(pl.col(pl.Utf8).str.replace_all('\n', ' '))
-            
+            df=df.with_columns(pl.exclude(pl.Utf8).cast(str))
             df = df.with_columns(pl.col(pl.Utf8).str.replace_all(NAN_VALUES_REGEX_POLARS, ''))
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
