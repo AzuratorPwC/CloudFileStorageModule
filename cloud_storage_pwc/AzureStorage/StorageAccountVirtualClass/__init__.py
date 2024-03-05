@@ -285,28 +285,12 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             if df.is_empty():
                 return
             df = df.with_columns(pl.col(pl.Utf8).str.replace_all('\n', ' '))
-            df=df.with_columns(pl.exclude(pl.Utf8).cast(str))
             df = df.with_columns(
-                            pl.col(pl.Utf8).str.replace_all("#N/A","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("N/A","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("#NA","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("-NaN","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("-nan","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("1.#IND","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("<NA>","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("#NA","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("-NaN","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("-nan","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("NA","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("NULL","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("NaN","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("n/a","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("nan","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("null","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("none","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("NONE","",literal=True),
-                            pl.col(pl.Utf8).str.replace_all("None","",literal=True)
-                            )
+                            pl.col(pl.Utf8).str.replace_all([ pl.lit(val) for val in NAN_VALUES_REGEX_PANDAS],pl.lit("") ))
+            
+            
+            #df=df.with_columns(pl.exclude(pl.Utf8).cast(str))
+            
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
         
