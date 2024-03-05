@@ -286,7 +286,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 return
             df = df.with_columns(pl.col(pl.Utf8).str.replace_all('\n', ' '))
             df = df.with_columns(
-                            pl.col(pl.Utf8).str.replace_all([ pl.lit(val) for val in NAN_VALUES_REGEX_PANDAS],pl.lit("") ))
+                            pl.col(pl.Utf8).apply(lambda s: "" if s in NAN_VALUES_REGEX_PANDAS else s))
             
             
             #df=df.with_columns(pl.exclude(pl.Utf8).cast(str))
