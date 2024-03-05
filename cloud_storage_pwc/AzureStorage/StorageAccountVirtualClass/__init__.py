@@ -286,7 +286,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 return
             df = df.with_columns(pl.col(pl.Utf8).str.replace_all('\n', ' '))
             df=df.with_columns(pl.exclude(pl.Utf8).cast(str))
-            df = df.with_columns(pl.col(pl.Utf8).str.replace_all(NAN_VALUES_REGEX_POLARS, ''))
+            df = df.with_columns(pl.col(pl.Utf8).str.replace_all(r"?(i)#N/A|#N/A|N/A|#NA|-1.#IND|-1.#QNAN|-NaN|-nan|1.#IND|1.#QNAN|<NA>|NA|NULL|NaN|n/a|nan|null|none|NONE|None", ''))
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
         
