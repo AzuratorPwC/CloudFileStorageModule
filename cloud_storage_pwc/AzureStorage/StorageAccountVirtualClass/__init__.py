@@ -324,7 +324,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                         else:
                             df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape)
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name  +"/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name  +"/".join(partition_path),f"{uuid.uuid4().hex}.csv",False)
 
 
                 if isinstance(df_part, pl.DataFrame):
@@ -340,7 +340,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                         else:
                             df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_style='never')
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)                                      
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",False)                                      
         else:
             buf = BytesIO()
             
@@ -361,7 +361,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 file_name_check = file_name
             else:
                 file_name_check  = f"{uuid.uuid4().hex}.csv"
-            self.save_binary_file(buf.getvalue(),container_name ,directory_path,file_name_check,True)
+            self.save_binary_file(buf.getvalue(),container_name ,directory_path,file_name_check,False)
     
     def save_dataframe_as_parquet(self,df,container_name : str,directory_path:str,engine: ENGINE_TYPES ='polars',partition_columns:list=None,compression:COMPRESSION_TYPES=None):
         """
@@ -420,7 +420,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                         buf = BytesIO()
                         df_part.to_parquet(buf,allow_truncated_timestamps=True, use_deprecated_int96_timestamps=True,compression=compression)
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" +"/".join(partition_path),f"{uuid.uuid4().hex}.parquet",True)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" +"/".join(partition_path),f"{uuid.uuid4().hex}.parquet",False)
 
                 if isinstance(df_part, pl.DataFrame):
                     for d1 in d:
@@ -431,7 +431,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                         buf = BytesIO()
                         df_part.write_parquet(buf,compression=compression)
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + "/".join(partition_path),f"{uuid.uuid4().hex}.parquet",False)
         else:
             buf = BytesIO()
             if isinstance(df, pd.DataFrame):
@@ -441,7 +441,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 df_reset = df
                 df.write_parquet(buf,compression=compression)
             buf.seek(0)
-            self.save_binary_file(buf.getvalue(),container_name ,directory_path,f"{uuid.uuid4().hex}.parquet",True)
+            self.save_binary_file(buf.getvalue(),container_name ,directory_path,f"{uuid.uuid4().hex}.parquet",False)
     
     
     def save_dataframe_as_xlsx(self, df,container_name : str,directory_path:str ,file_name:str,sheet_name:str,engine:ENGINE_TYPES ='polars',index=False,header=False):

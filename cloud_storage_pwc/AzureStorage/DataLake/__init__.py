@@ -74,7 +74,10 @@ class DataLake(StorageAccountVirtualClass):
                             subdir_client.create_directory()
                         file_client = subdir_client.get_file_client(file_name)
                 #content_settings = ContentSettings(content_encoding=encoding,content_type = "text/csv")
-                    file_client.upload_data(bytes(input_bytes),overwrite=is_overwrite)
+                    file_client.upload_data(bytes(input_bytes),overwrite=is_overwrite,validate_content=True)
+                    
+                    if self.file_exists(container_name,directory_path,file_name) is False:
+                        raise FileNotFoundError(f"{container_name}/{directory_path}/{file_name} not found")
                     
                     break
                 except HttpResponseError as e:
@@ -203,7 +206,7 @@ class DataLake(StorageAccountVirtualClass):
             file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
             if file_system_client.exists() is False:
                 raise ContainerNotFound(f"Container {container_name} not found")
-        
+                
             main_directory = file_system_client.get_directory_client("/")
             if directory_path != "":
                 main_directory = main_directory.get_sub_directory_client(directory_path)
