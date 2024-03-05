@@ -15,6 +15,8 @@ NAN_VALUES = [ '#N/A', '#N/A','N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan
         '1.#IND', '1.#QNAN',
         '<NA>', 'NA', 'NULL', 'NaN', 'n/a', 'nan', 'null','none',"NONE",'None']
 
+NAN_VALUES_REGEX = "?(i)#N/A|#N/A|N/A|#NA|-1.#IND|-1.#QNAN|-NaN|-nan|1.#IND|1.#QNAN|<NA>|NA|NULL|NaN|n/a|nan|null|none|NONE|None"
+
 
 
 class Utils:

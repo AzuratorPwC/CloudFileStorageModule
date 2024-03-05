@@ -280,7 +280,10 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             if df.is_empty():
                 return
             df = df.with_columns(pl.col(pl.Utf8).str.replace_all('\n', ' '))
-            df = df.with_columns(pl.col(pl.Utf8).str.replace_all(NAN_VALUES, ''))
+            
+            aaa="ggg"
+            
+            df = df.with_columns(pl.col(pl.Utf8).str.replace_all(r"NAN_VALUES_REGEX", ''))
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
         
