@@ -271,7 +271,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         
         if isinstance(df, pd.DataFrame):
             if df.empty:
-                return
+                return -1
             df = df.replace('\r\n', ' ', regex=True).replace('\n', ' ', regex=True)
             #if not (df.filter(regex=r'^\s*$').empty and df.filter(items=NAN_VALUES_REGEX).empty):
             df = df.astype(str)
@@ -283,7 +283,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
 
         elif isinstance(df, pl.DataFrame):
             if df.is_empty():
-                return
+                return -1
             df = df.with_columns(pl.col(pl.Utf8).str.replace_all('\r\n', ' '))
             df = df.with_columns(pl.col(pl.Utf8).str.replace_all('\n', ' '))
             for x in NAN_VALUES_REGEX:
