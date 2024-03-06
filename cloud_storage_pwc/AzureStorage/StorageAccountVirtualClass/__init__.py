@@ -365,6 +365,8 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             else:
                 file_name_check  = f"{uuid.uuid4().hex}.csv"
             self.save_binary_file(buf.getvalue(),container_name ,directory_path,file_name_check,True)
+            
+        return 0
     
     def save_dataframe_as_parquet(self,df,container_name : str,directory_path:str,engine: ENGINE_TYPES ='polars',partition_columns:list=None,compression:COMPRESSION_TYPES=None):
         """
