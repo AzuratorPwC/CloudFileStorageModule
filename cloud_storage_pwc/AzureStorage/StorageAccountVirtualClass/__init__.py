@@ -122,7 +122,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def save_binary_file(self, input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True):
+    def save_binary_file(self, input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True,tries:int=3,bytes_length:int=None):
         """
         Save a binary file to the specified container in the cloud storage.
 
@@ -323,6 +323,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                             df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=1,escapechar=escape)
                         else:
                             df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape)
+                        buf.flush()
                         buf.seek(0)
                         self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name  +"/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
 
@@ -339,6 +340,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                             df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header, quote_char=quoting, quote_style='always')
                         else:
                             df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_style='never')
+                        buf.flush()
                         buf.seek(0)
                         self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)                                      
         else:
@@ -355,8 +357,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                     df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_char=quoting,  quote_style="always")
                 else:
                     df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header, quote_style="never")
+            
+            buf.flush()
             buf.seek(0)
-
             if file_name:
                 file_name_check = file_name
             else:

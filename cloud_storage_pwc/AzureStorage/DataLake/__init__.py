@@ -58,11 +58,14 @@ class DataLake(StorageAccountVirtualClass):
                 time.sleep(1)
                 continue
 
-    def save_binary_file(self,input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True,tries:int=3):
+    def save_binary_file(self,input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True,tries:int=3,bytes_length:int=None):
         
         
-        temp_is_overwrite = is_overwrite
         for i in range(tries):
+            save_try = 10
+            start_sleep = 3
+            add_sleep = 2
+            temp_is_overwrite = is_overwrite
             try:
                 try:
                     file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
@@ -71,7 +74,7 @@ class DataLake(StorageAccountVirtualClass):
                     main_directory_client = file_system_client.get_directory_client("/")
                     if directory_path =="":
                         file_client = main_directory_client.get_file_client(file_name)
-                        res=file_client.upload_data(bytes(input_bytes),  overwrite=temp_is_overwrite,validate_content=True)
+                        res=file_client.upload_data(bytes(input_bytes),length=bytes_length,  overwrite=temp_is_overwrite,validate_content=True)
 
                     else:
                         subdir_client = main_directory_client.get_sub_directory_client(directory_path)
@@ -79,28 +82,30 @@ class DataLake(StorageAccountVirtualClass):
                             subdir_client.create_directory()
                         file_client = subdir_client.get_file_client(file_name)
                 #content_settings = ContentSettings(content_encoding=encoding,content_type = "text/csv")
-                        res=file_client.upload_data(bytes(input_bytes), overwrite=temp_is_overwrite,validate_content=True)
+                        res=file_client.upload_data(bytes(input_bytes),length=bytes_length, overwrite=temp_is_overwrite,validate_content=True)
                     
                     check = self.file_exists(container_name,directory_path,file_name)
                     
                     if check is False:
                         temp_is_overwrite = True
-                        time.sleep(3)
-                        for i in range(tries):
+                        time.sleep(start_sleep)
+                        
+                        for i in range(save_try):
+                            start_sleep = start_sleep * add_sleep
                             check = self.file_exists(container_name,directory_path,file_name)
                             if check:
                                 break
-                            time.sleep(3)
-                            res=file_client.upload_data(bytes(input_bytes),  overwrite=temp_is_overwrite,validate_content=True)
+                            time.sleep(start_sleep)
+                            res=file_client.upload_data(bytes(input_bytes),length=bytes_length,  overwrite=temp_is_overwrite,validate_content=True)
                         if check is False:
                             raise FileNotFoundError(f"{container_name}/{directory_path}/{file_name} not found")
                     break
                 except HttpResponseError as e:
                     raise NotAuthorizedToPerformThisOperation("User is not authorized to perform this operation") from e
-            except NotAuthorizedToPerformThisOperation:
+            except:
                 if i==tries-1:
                     raise
-                time.sleep(1)
+                time.sleep(3)
                 continue
     
     def read_binary_file(self, container_name:str, directory_path:str, file_name:str,tries:int=3)->bytes:

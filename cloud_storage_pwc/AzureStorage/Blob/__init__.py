@@ -142,7 +142,7 @@ class Blob(StorageAccountVirtualClass):
             raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
 
 
-    def save_binary_file(self, input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True,tries:int=3):
+    def save_binary_file(self, input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True,tries:int=3,bytes_length:int=None):
         
         temp_is_overwrite = is_overwrite
         for i in range(tries):
@@ -178,7 +178,7 @@ class Blob(StorageAccountVirtualClass):
             except:
                 if i==tries-1:
                     raise
-                time.sleep(1)
+                time.sleep(3)
                 continue
 
 
