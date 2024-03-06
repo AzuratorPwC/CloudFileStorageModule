@@ -77,23 +77,28 @@ class DataLake(StorageAccountVirtualClass):
                             subdir_client.create_directory()
                         file_client = subdir_client.get_file_client(file_name)
                 #content_settings = ContentSettings(content_encoding=encoding,content_type = "text/csv")
-                    res=file_client.upload_data(bytes(input_bytes),length=bytes(input_bytes).__sizeof__(), overwrite=temp_is_overwrite)
+                    res=file_client.upload_data(bytes(input_bytes), overwrite=temp_is_overwrite)
                     
-                    if self.file_exists(container_name,directory_path,file_name) is False:
-                        raise FileNotFoundError(f"{container_name}/{directory_path}/{file_name} not found")
-                    
+                    check = self.file_exists(container_name,directory_path,file_name)
+                    if check is False:
+                        temp_is_overwrite = True
+                        time.sleep(3)
+                        for i in range(tries):
+                            check = self.file_exists(container_name,directory_path,file_name)
+                            if check:
+                                break
+                            time.sleep(3)
+                            res=file_client.upload_data(bytes(input_bytes), overwrite=temp_is_overwrite)
+                        if check is False:
+                            raise FileNotFoundError(f"{container_name}/{directory_path}/{file_name} not found")
                     break
                 except HttpResponseError as e:
                     raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
-            except FileNotFoundError:
-                temp_is_overwrite = True
+            except:
                 if i==tries-1:
                     raise
-                time.sleep(3)
-                if self.file_exists(container_name,directory_path,file_name) is True:
-                    break
-                else:
-                    continue
+                time.sleep(1)
+                continue
     
     def read_binary_file(self, container_name:str, directory_path:str, file_name:str,tries:int=3)->bytes:
         

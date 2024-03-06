@@ -154,25 +154,32 @@ class Blob(StorageAccountVirtualClass):
                     if not directory_path == '' and not directory_path.endswith('/'):
                         directory_path += '/'
                     new_blob_client = container_client.get_blob_client(directory_path + file_name)
-                    res=new_blob_client.upload_blob(bytes(input_bytes),length=bytes(input_bytes).__sizeof__(), overwrite=temp_is_overwrite)
+                    res=new_blob_client.upload_blob(bytes(input_bytes), overwrite=temp_is_overwrite)
                     
-                    if self.file_exists(container_name,directory_path,file_name) is False:
-                        raise FileNotFoundError(f"{container_name}/{directory_path}/{file_name} not found")
                     
+                    check = self.file_exists(container_name,directory_path,file_name)
+                    if check is False:
+                        temp_is_overwrite = True
+                        time.sleep(3)
+                        for i in range(tries):
+                            check = self.file_exists(container_name,directory_path,file_name)
+                            if check:
+                                break
+                            time.sleep(3)
+                            res=new_blob_client.upload_blob(bytes(input_bytes), overwrite=temp_is_overwrite)
+                        if check is False:
+                            raise FileNotFoundError(f"{container_name}/{directory_path}/{file_name} not found")
+                  
                     break
                 except ResourceExistsError as e:
                     raise BlobAlreadyExists(f"File {file_name} already exists") from e
                 except HttpResponseError as e:
                     raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
-            except FileNotFoundError:
-                temp_is_overwrite = True
+            except:
                 if i==tries-1:
                     raise
-                time.sleep(3)
-                if self.file_exists(container_name,directory_path,file_name) is True:
-                    break
-                else:
-                    continue
+                time.sleep(1)
+                continue
 
 
     def delete_file(self,container_name : str,directory_path : str,file_name:str,wait:bool=True):
