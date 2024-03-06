@@ -7,3 +7,4 @@ xlsxwriter
 polars
 openpyxl
 fastexcel
+pyarrow
