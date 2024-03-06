@@ -279,6 +279,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             
             #df = df.replace(NAN_VALUES_REGEX, '', regex=True)
             if engine != 'pandas':
+                df = df.astype(str)
                 df = pl.from_pandas(df)
 
         elif isinstance(df, pl.DataFrame):
