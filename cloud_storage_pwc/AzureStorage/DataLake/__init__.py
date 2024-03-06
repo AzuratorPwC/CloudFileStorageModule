@@ -1,5 +1,6 @@
 
 
+import sys
 from ..StorageAccountVirtualClass import *
 
 from azure.storage.filedatalake import DataLakeServiceClient
@@ -59,6 +60,8 @@ class DataLake(StorageAccountVirtualClass):
 
     def save_binary_file(self,input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True,tries:int=3):
         
+        
+        temp_is_overwrite = is_overwrite
         for i in range(tries):
             try:
                 try:
@@ -74,7 +77,7 @@ class DataLake(StorageAccountVirtualClass):
                             subdir_client.create_directory()
                         file_client = subdir_client.get_file_client(file_name)
                 #content_settings = ContentSettings(content_encoding=encoding,content_type = "text/csv")
-                    file_client.upload_data(bytes(input_bytes),length= len(bytes(input_bytes)), overwrite=is_overwrite)
+                    res=file_client.upload_data(bytes(input_bytes),length=bytes(input_bytes).__sizeof__(), overwrite=temp_is_overwrite)
                     
                     if self.file_exists(container_name,directory_path,file_name) is False:
                         raise FileNotFoundError(f"{container_name}/{directory_path}/{file_name} not found")
@@ -82,11 +85,15 @@ class DataLake(StorageAccountVirtualClass):
                     break
                 except HttpResponseError as e:
                     raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
-            except:
+            except FileNotFoundError:
+                temp_is_overwrite = True
                 if i==tries-1:
                     raise
-                time.sleep(1)
-                continue
+                time.sleep(3)
+                if self.file_exists(container_name,directory_path,file_name) is True:
+                    break
+                else:
+                    continue
     
     def read_binary_file(self, container_name:str, directory_path:str, file_name:str,tries:int=3)->bytes:
         

@@ -142,23 +142,37 @@ class Blob(StorageAccountVirtualClass):
             raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
 
 
-    def save_binary_file(self, input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True):
-        try:
-            container_client = self.__service_client.get_container_client(container=container_name)
-            if container_client.exists() is False:
-                raise ContainerNotFound(f"Container {container_name} not found")
-            if not directory_path == '' and not directory_path.endswith('/'):
-                directory_path += '/'
-            new_blob_client = container_client.get_blob_client(directory_path + file_name)
-            new_blob_client.upload_blob(bytes(input_bytes),length= len(bytes(input_bytes)), overwrite=is_overwrite)
-            
-            if self.file_exists(container_name,directory_path,file_name) is False:
-                raise FileNotFoundError(f"{container_name}/{directory_path}/{file_name} not found")
-            
-        except ResourceExistsError as e:
-            raise BlobAlreadyExists(f"File {file_name} already exists") from e
-        except HttpResponseError as e:
-            raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
+    def save_binary_file(self, input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True,tries:int=3):
+        
+        temp_is_overwrite = is_overwrite
+        for i in range(tries):
+            try:
+                try:
+                    container_client = self.__service_client.get_container_client(container=container_name)
+                    if container_client.exists() is False:
+                        raise ContainerNotFound(f"Container {container_name} not found")
+                    if not directory_path == '' and not directory_path.endswith('/'):
+                        directory_path += '/'
+                    new_blob_client = container_client.get_blob_client(directory_path + file_name)
+                    res=new_blob_client.upload_blob(bytes(input_bytes),length=bytes(input_bytes).__sizeof__(), overwrite=temp_is_overwrite)
+                    
+                    if self.file_exists(container_name,directory_path,file_name) is False:
+                        raise FileNotFoundError(f"{container_name}/{directory_path}/{file_name} not found")
+                    
+                    break
+                except ResourceExistsError as e:
+                    raise BlobAlreadyExists(f"File {file_name} already exists") from e
+                except HttpResponseError as e:
+                    raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
+            except FileNotFoundError:
+                temp_is_overwrite = True
+                if i==tries-1:
+                    raise
+                time.sleep(3)
+                if self.file_exists(container_name,directory_path,file_name) is True:
+                    break
+                else:
+                    continue
 
 
     def delete_file(self,container_name : str,directory_path : str,file_name:str,wait:bool=True):
