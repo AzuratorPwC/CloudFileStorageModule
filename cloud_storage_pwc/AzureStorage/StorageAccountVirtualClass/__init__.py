@@ -284,10 +284,10 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         elif isinstance(df, pl.DataFrame):
             if df.is_empty():
                 return -1
-            df = df.with_columns(pl.col(pl.String).replace('\r\n', ' ',literal=True))
-            df = df.with_columns(pl.col(pl.String).replace('\n', ' ',literal=True))
+            df = df.with_columns(pl.col(pl.String).str.replace('\r\n', ' ',literal=True))
+            df = df.with_columns(pl.col(pl.String).str.replace('\n', ' ',literal=True))
             for x in NAN_VALUES_REGEX:
-                df = df.with_columns(pl.col(pl.String).replace(x, '',literal=True))
+                df = df.with_columns(pl.col(pl.String).str.replace(x, '',literal=True))
             
             #df=df.with_columns(pl.exclude(pl.Utf8).cast(str))
             
