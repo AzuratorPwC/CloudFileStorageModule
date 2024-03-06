@@ -71,13 +71,15 @@ class DataLake(StorageAccountVirtualClass):
                     main_directory_client = file_system_client.get_directory_client("/")
                     if directory_path =="":
                         file_client = main_directory_client.get_file_client(file_name)
+                        res=file_client.upload_data(bytes(input_bytes),length=bytes(input_bytes).__sizeof__(),  overwrite=temp_is_overwrite,validate_content=True)
+
                     else:
                         subdir_client = main_directory_client.get_sub_directory_client(directory_path)
                         if subdir_client.exists() is False:
                             subdir_client.create_directory()
                         file_client = subdir_client.get_file_client(file_name)
                 #content_settings = ContentSettings(content_encoding=encoding,content_type = "text/csv")
-                        file_client.upload_data(bytes(input_bytes), overwrite=temp_is_overwrite)
+                        res=file_client.upload_data(bytes(input_bytes),length=bytes(input_bytes).__sizeof__(),  overwrite=temp_is_overwrite,validate_content=True)
                     
                     check = self.file_exists(container_name,directory_path,file_name)
                     
