@@ -19,13 +19,14 @@ import json
 
 aaa=azure_storage("strwebfazzabidev","T9xPYlyWbvERtuSOHCKe8FO8N+TgaxrrtFoOqo7xx1zN8LL4o1AdK2g/KwUBCatIVGqgiZELE7Oh+AStov5kzw==")
 
-aaa.delete_files_by_prefix("webstage-dev","shp/dane153","aaa_")
+
 #bb=aaa.ls_files("webstage-dev","shp/dane153",True)
 
-#cc=aaa.get_file_system_client("aaggg").get_directory_client("/").exists()
+#=aaa.get_file_system_client("aaggg").get_directory_client("/").exists()
 #b=aaa.get_file_system_client("aaggg").get_directory_client("/").get_sub_directory_client("folder1").get_file_client("file2.txt").exists() #.get_file_client("file1.txt").rename_file("aaaa.b")
-#v=aaa.read_csv_folder("foldercheck1","folder1", delimiter=";",engine="pandas")
-#print(aaa.__class__.__name__)
+v=aaa.read_csv_file("webstage-dev","shp","dev11.csv", delimiter=";",engine="pandas")
+aaa.save_dataframe_as_csv(v,"webstage-dev","shp","dev11222.csv",engine="pandas",delimiter='◇')
+print(v)
 #vv=aaa.delete_folder("webstage-dev","shp/dane153",True)
 
 #print(vv.get_directory_properties())

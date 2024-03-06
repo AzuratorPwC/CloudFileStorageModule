@@ -77,9 +77,10 @@ class DataLake(StorageAccountVirtualClass):
                             subdir_client.create_directory()
                         file_client = subdir_client.get_file_client(file_name)
                 #content_settings = ContentSettings(content_encoding=encoding,content_type = "text/csv")
-                    res=file_client.upload_data(bytes(input_bytes), overwrite=temp_is_overwrite)
+                        file_client.upload_data(bytes(input_bytes), overwrite=temp_is_overwrite)
                     
                     check = self.file_exists(container_name,directory_path,file_name)
+                    
                     if check is False:
                         temp_is_overwrite = True
                         time.sleep(3)
@@ -93,8 +94,8 @@ class DataLake(StorageAccountVirtualClass):
                             raise FileNotFoundError(f"{container_name}/{directory_path}/{file_name} not found")
                     break
                 except HttpResponseError as e:
-                    raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
-            except:
+                    raise NotAuthorizedToPerformThisOperation("User is not authorized to perform this operation") from e
+            except NotAuthorizedToPerformThisOperation:
                 if i==tries-1:
                     raise
                 time.sleep(1)
