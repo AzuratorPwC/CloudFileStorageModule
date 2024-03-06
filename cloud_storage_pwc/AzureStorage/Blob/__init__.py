@@ -150,7 +150,7 @@ class Blob(StorageAccountVirtualClass):
             if not directory_path == '' and not directory_path.endswith('/'):
                 directory_path += '/'
             new_blob_client = container_client.get_blob_client(directory_path + file_name)
-            new_blob_client.upload_blob(bytes(input_bytes), overwrite=is_overwrite,validate_content=True)
+            new_blob_client.upload_blob(bytes(input_bytes),length= len(bytes(input_bytes)), overwrite=is_overwrite)
             
             if self.file_exists(container_name,directory_path,file_name) is False:
                 raise FileNotFoundError(f"{container_name}/{directory_path}/{file_name} not found")

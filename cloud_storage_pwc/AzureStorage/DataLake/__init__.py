@@ -74,7 +74,7 @@ class DataLake(StorageAccountVirtualClass):
                             subdir_client.create_directory()
                         file_client = subdir_client.get_file_client(file_name)
                 #content_settings = ContentSettings(content_encoding=encoding,content_type = "text/csv")
-                    file_client.upload_data(bytes(input_bytes),overwrite=is_overwrite,validate_content=True)
+                    file_client.upload_data(bytes(input_bytes),length= len(bytes(input_bytes)), overwrite=is_overwrite)
                     
                     if self.file_exists(container_name,directory_path,file_name) is False:
                         raise FileNotFoundError(f"{container_name}/{directory_path}/{file_name} not found")
