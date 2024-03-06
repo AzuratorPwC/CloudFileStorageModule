@@ -267,17 +267,25 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         return list_of_dff
     
     
-    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:str = ";",is_first_row_as_header:bool = True,quoting:QUOTING_TYPES=None,escape:ESCAPE_TYPES=None, engine: ENGINE_TYPES ='polars'):
+    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:str = ";",is_first_row_as_header:bool = True,quoting:QUOTING_TYPES=None,escape:ESCAPE_TYPES=None, engine: ENGINE_TYPES ='polars',replace_to_empty="Default"):
+        
+         
+        if replace_to_empty == "Default":
+            to_replace_list = NAN_VALUES_REGEX
+        elif isinstance(replace_to_empty, str):
+            to_replace_list=list(replace_to_empty,)
+        elif isinstance(replace_to_empty, list):
+            to_replace_list = replace_to_empty
+        
         
         if isinstance(df, pd.DataFrame):
             if df.empty:
                 return -1
             df = df.replace(to_replace='\r\n',value= ' ', regex=False).replace(to_replace='\n',value= ' ', regex=False)
-            #if not (df.filter(regex=r'^\s*$').empty and df.filter(items=NAN_VALUES_REGEX).empty):
-            #df = df.astype(str)
-            df = df.replace(to_replace=NAN_VALUES_REGEX, value="",regex=False)
             
-            #df = df.replace(NAN_VALUES_REGEX, '', regex=True)
+            if replace_to_empty is not None:
+                df = df.replace(to_replace=to_replace_list, value="",regex=False)
+            
             if engine != 'pandas':
                 df = df.astype(str)
                 df = pl.from_pandas(df)
@@ -287,8 +295,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 return -1
             df = df.with_columns(pl.col(pl.String).str.replace('\r\n', ' ',literal=True))
             df = df.with_columns(pl.col(pl.String).str.replace('\n', ' ',literal=True))
-            for x in NAN_VALUES_REGEX:
-                df = df.with_columns(pl.col(pl.String).str.replace(x, '',literal=True))
+            if replace_to_empty is not None:
+                for x in to_replace_list:
+                    df = df.with_columns(pl.col(pl.String).str.replace(x, '',literal=True))
             
             #df = df.with_columns(pl.all().str.strip_chars())
             #df=df.with_columns(pl.exclude(pl.Utf8).cast(str))
