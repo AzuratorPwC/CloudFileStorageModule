@@ -289,6 +289,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             for x in NAN_VALUES_REGEX:
                 df = df.with_columns(pl.col(pl.String).str.replace(x, '',literal=True))
             
+            #df = df.with_columns(pl.all().str.strip_chars())
             #df=df.with_columns(pl.exclude(pl.Utf8).cast(str))
             
             if engine != 'polars':
@@ -320,9 +321,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                         buf = BytesIO()
                         df_reset = df_part.reset_index(drop=True)
                         if quoting is not None:
-                            df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=1,escapechar=escape)
+                            df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=1,escapechar=escape,decimal='.')
                         else:
-                            df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape)
+                            df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape,decimal='.')
                         buf.flush()
                         buf.seek(0)
                         self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name  +"/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
@@ -336,35 +337,51 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                     if not(df_part.is_empty()):
                         buf = BytesIO()
                         df_reset = df_part
-                        if quoting is not None:
-                            df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header, quote_char=quoting, quote_style='always')
-                        else:
-                            df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_style='never')
-                        buf.flush()
-                        buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)                                      
+                        with pl.Config(
+                            thousands_separator=None,
+                            decimal_separator="."              
+                        ):
+                            if quoting is not None:
+                                df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header, quote_char=quoting, quote_style='always')
+                            else:
+                                df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_style='never')
+                            buf.flush()
+                            buf.seek(0)
+                            self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)                                      
         else:
             buf = BytesIO()
             
-            if isinstance(df, pd.DataFrame):
-                df.reset_index(drop=True,inplace=True)
-                if quoting is not None:
-                    df.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=1,escapechar=escape)
-                else:
-                    df.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape)
-            else:
-                if quoting is not None:
-                    df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_char=quoting,  quote_style="always")
-                else:
-                    df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header, quote_style="never")
-            
-            buf.flush()
-            buf.seek(0)
             if file_name:
                 file_name_check = file_name
             else:
                 file_name_check  = f"{uuid.uuid4().hex}.csv"
-            self.save_binary_file(buf.getvalue(),container_name ,directory_path,file_name_check,True)
+            
+            
+            if isinstance(df, pd.DataFrame):
+                df.reset_index(drop=True,inplace=True)
+                if quoting is not None:
+                    df.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=1,escapechar=escape,decimal='.')
+                else:
+                    df.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape,decimal='.')
+                buf.flush()
+                buf.seek(0)
+            
+                self.save_binary_file(buf.getvalue(),container_name ,directory_path,file_name_check,True)
+            
+            else:  
+                with pl.Config(
+                    thousands_separator=None,
+                    decimal_separator="."        
+                ):
+                    if quoting is not None:
+                        df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_char=quoting,  quote_style="always")
+                    else:
+                        df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header, quote_style="never")
+            
+                    buf.flush()
+                    buf.seek(0)
+            
+                    self.save_binary_file(buf.getvalue(),container_name ,directory_path,file_name_check,True)
             
         return 0
     
