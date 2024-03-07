@@ -281,11 +281,12 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         if isinstance(df, pd.DataFrame):
             if df.empty:
                 return -1
-            
+            df = df.replace({r"_x([0-9a-fA-F]{4})_": ""}, regex=True)
             df = df.replace(regex='\r\n',value= ' ', ).replace(regex='\n',value= ' ')
             
             if replace_to_empty is not None:
                 df = df.replace(to_replace=to_replace_list, value="",regex=False)
+            
             
             if engine != 'pandas':
                 df = df.astype(str)
@@ -296,6 +297,8 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 return -1
             df = df.with_columns(pl.col(pl.String).str.replace('\r\n', ' ',literal=False))
             df = df.with_columns(pl.col(pl.String).str.replace('\n', ' ',literal=False))
+            df = df.with_columns(pl.col(pl.String).str.replace(r"_x([0-9a-fA-F]{4})_", "",literal=False))
+
             if replace_to_empty is not None:
                 for x in to_replace_list:
                     df = df.with_columns(pl.col(pl.String).str.replace(x, '',literal=True))
@@ -382,7 +385,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             else:  
                 with pl.Config(
                     thousands_separator=None,
-                    decimal_separator="."        
+                    decimal_separator="." 
                 ):
                     if quoting is not None:
                         df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_char=quoting,  quote_style="always")
