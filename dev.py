@@ -25,13 +25,18 @@ aaa=azure_storage("strwebfazzabidev","T9xPYlyWbvERtuSOHCKe8FO8N+TgaxrrtFoOqo7xx1
 
 #=aaa.get_file_system_client("aaggg").get_directory_client("/").exists()
 #b=aaa.get_file_system_client("aaggg").get_directory_client("/").get_sub_directory_client("folder1").get_file_client("file2.txt").exists() #.get_file_client("file1.txt").rename_file("aaaa.b")
-v=aaa.read_csv_file("webstage-dev","shp","dev11.csv", delimiter=";",engine="pandas")
+#v=aaa.read_csv_file("webstage-dev","shp","dev11.csv", delimiter=";",engine="pandas")
 #bbb=aaa.read_binary_file("webstage-dev","shp/MAIN/20240305001237","agroFinPlan2024_CIECH BU AGRO BUDGET 2024-2029_PFV_BAZA DANYCH AGRO_20240305231438.csv")
 #buf=bbb.__sizeof__()
 
+df=pd.DataFrame(data= {'col1': [1, 2], 'col2': [3, 4]})
+print(df)
+
 # 
 # print(bbb.__sizeof__())
-aaa.save_dataframe_as_csv(v,"webstage-dev","shp","dev11222.csv",engine="pandas",delimiter='◇')
+res = aaa.save_dataframe_as_csv(df,"webstage-dev","shp","test111.csv",engine="pandas",delimiter=';')
+print(res)
+#print(res)
 #print(v)
 #vv=aaa.delete_folder("webstage-dev","shp/dane153",True)
 
