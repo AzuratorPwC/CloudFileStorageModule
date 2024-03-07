@@ -5,8 +5,8 @@ import numpy as np
 
 ENGINE_TYPES = Literal['pandas', 'polars']
 #DELIMITER_TYPES = Literal[';', '^','~',',','\t','|','◇','◆',' ']
-QUOTING_TYPES = Literal['"','|','~','^']
-ESCAPE_TYPES = Literal['\\','|','~','^']
+#QUOTING_TYPES = Literal['"','|','~','^']
+#ESCAPE_TYPES = Literal['\\','|','~','^']
 #QUOTING_TYPES = Literal['QUOTE_MINIMAL', 'QUOTE_ALL','QUOTE_NONNUMERIC','QUOTE_NONE']
 ENCODING_TYPES = Literal['UTF-8', 'UTF-16']
 COMPRESSION_TYPES = Literal['snappy', 'gzip', 'brotli']

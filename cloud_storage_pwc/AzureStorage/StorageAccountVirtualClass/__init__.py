@@ -14,7 +14,7 @@ import polars as pl
 from ..Utils import *
 from ..Exceptions import *
 import logging
-
+import csv
 
 
 class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
@@ -52,7 +52,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
 
 
     @classmethod
-    def read_csv_bytes(cls,input_bytes:bytes,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8", delimiter :str= ',',is_first_row_as_header :bool= False,skip_rows:int=0, skip_blank_lines = True,quoting:QUOTING_TYPES=None):
+    def read_csv_bytes(cls,input_bytes:bytes,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8", delimiter :str= ',',is_first_row_as_header :bool= False,skip_rows:int=0, skip_blank_lines = True,quoting:str=None):
         """Class representing a StorageAccountVirtualClass"""
         if engine == 'pandas':
             if quoting is not None:
@@ -156,7 +156,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
     def read_csv_file(self, container_name:str, directory_path:str, file_name:str,
                       engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8",
                       delimiter:str=',', is_first_row_as_header:bool=False,
-                      skip_rows:int=0, skip_blank_lines=True,quoting:QUOTING_TYPES=None, tech_columns:bool=False):
+                      skip_rows:int=0, skip_blank_lines=True,quoting:str=None, tech_columns:bool=False):
         """
         Read a CSV file from an Azure Blob Storage container and return the data as a DataFrame.
 
@@ -189,7 +189,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             df =  add_tech_columns(df,container_name,directory_path.replace("\\","/"),file_name)
         return df
     
-    def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8", delimiter:str = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:QUOTING_TYPES=None,tech_columns:bool=False,recursive:bool=False):
+    def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8", delimiter:str = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:str=None,tech_columns:bool=False,recursive:bool=False):
         list_files = self.ls_files(container_name,directory_path, recursive=recursive)
         df = None
         if list_files:
@@ -267,7 +267,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         return list_of_dff
     
     
-    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:str = ";",is_first_row_as_header:bool = True,quoting:QUOTING_TYPES=None,escape:ESCAPE_TYPES=None, engine: ENGINE_TYPES ='polars',replace_to_empty="Default"):
+    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:str = ";",is_first_row_as_header:bool = True,quoting:str=None,escape:str=None, engine: ENGINE_TYPES ='polars',replace_to_empty="Default"):
         
          
         if replace_to_empty == "Default":
@@ -281,7 +281,8 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         if isinstance(df, pd.DataFrame):
             if df.empty:
                 return -1
-            df = df.replace(to_replace='\r\n',value= ' ', regex=False).replace(to_replace='\n',value= ' ', regex=False)
+            
+            df = df.replace(regex='\r\n',value= ' ', ).replace(regex='\n',value= ' ')
             
             if replace_to_empty is not None:
                 df = df.replace(to_replace=to_replace_list, value="",regex=False)
@@ -293,8 +294,8 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         elif isinstance(df, pl.DataFrame):
             if df.is_empty():
                 return -1
-            df = df.with_columns(pl.col(pl.String).str.replace('\r\n', ' ',literal=True))
-            df = df.with_columns(pl.col(pl.String).str.replace('\n', ' ',literal=True))
+            df = df.with_columns(pl.col(pl.String).str.replace('\r\n', ' ',literal=False))
+            df = df.with_columns(pl.col(pl.String).str.replace('\n', ' ',literal=False))
             if replace_to_empty is not None:
                 for x in to_replace_list:
                     df = df.with_columns(pl.col(pl.String).str.replace(x, '',literal=True))
@@ -331,9 +332,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                         buf = BytesIO()
                         df_reset = df_part.reset_index(drop=True)
                         if quoting is not None:
-                            df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=1,escapechar=escape,decimal='.')
+                            df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=csv.QUOTE_ALL,escapechar=escape,decimal='.',doublequote=False)
                         else:
-                            df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape,decimal='.')
+                            df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape,decimal='.',quoting=csv.QUOTE_NONE,doublequote=False)
                         buf.flush()
                         buf.seek(0)
                         self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name  +"/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
@@ -370,9 +371,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             if isinstance(df, pd.DataFrame):
                 df.reset_index(drop=True,inplace=True)
                 if quoting is not None:
-                    df.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=1,escapechar=escape,decimal='.')
+                    df.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=csv.QUOTE_ALL,escapechar=escape,decimal='.',doublequote=False)
                 else:
-                    df.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape,decimal='.')
+                    df.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape,decimal='.',quoting=csv.QUOTE_NONE,doublequote=False)
                 buf.flush()
                 buf.seek(0)
             

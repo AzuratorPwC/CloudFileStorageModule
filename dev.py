@@ -29,12 +29,12 @@ aaa=azure_storage("strwebfazzabidev","T9xPYlyWbvERtuSOHCKe8FO8N+TgaxrrtFoOqo7xx1
 #bbb=aaa.read_binary_file("webstage-dev","shp/MAIN/20240305001237","agroFinPlan2024_CIECH BU AGRO BUDGET 2024-2029_PFV_BAZA DANYCH AGRO_20240305231438.csv")
 #buf=bbb.__sizeof__()
 
-df=pd.DataFrame(data= {'col1': [1, 2], 'col2': [3, 4]})
+df=pd.DataFrame(data= {'col1': ['"ffff" dfdf \n', 'dfdfdddd'], 'col2': [3, 4]})
 print(df)
 
 # 
 # print(bbb.__sizeof__())
-res = aaa.save_dataframe_as_csv(df,"webstage-dev","shp","test111.csv",engine="pandas",delimiter=';')
+res = aaa.save_dataframe_as_csv(df,"webstage-dev","shp","test111.csv",engine="pandas",delimiter=';',escape='\\')
 print(res)
 #print(res)
 #print(v)
