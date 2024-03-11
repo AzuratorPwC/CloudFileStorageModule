@@ -2,7 +2,6 @@
 
 import sys
 from ..StorageAccountVirtualClass import *
-
 from azure.storage.filedatalake import DataLakeServiceClient
 
 from azure.identity import DefaultAzureCredential

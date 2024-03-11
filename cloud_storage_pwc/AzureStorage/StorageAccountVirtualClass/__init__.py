@@ -914,7 +914,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @classmethod
-    def read_json_bytes(cls,input_bytes:bytes, orient: ORIENT_TYPES = 'records', engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8",quoting:QUOTING_TYPES=None):
+    def read_json_bytes(cls,input_bytes:bytes, orient: ORIENT_TYPES = 'records', engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8",quoting:str=None):
         """Class representing a StorageAccountVirtualClass"""
         if engine == 'pandas':
             if quoting is not None:
@@ -928,7 +928,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         return df
 
     def read_json_file(self, container_name:str, directory_path:str, file_name:str, orient: ORIENT_TYPES = 'records',
-                      engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8", quoting:QUOTING_TYPES=None, tech_columns:bool=False):
+                      engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8", quoting:str=None, tech_columns:bool=False):
         """
         Read a JSON file from an Azure Blob Storage container and return the data as a DataFrame.
 
@@ -954,7 +954,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         return df
     
     def read_json_folder(self,container_name:str,directory_path:str,orient: ORIENT_TYPES = 'records',
-                         engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8",quoting:QUOTING_TYPES=None,tech_columns:bool=False,recursive:bool=False):
+                         engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8",quoting:str=None,tech_columns:bool=False,recursive:bool=False):
         list_files = self.ls_files(container_name,directory_path, recursive=recursive)
         df = None
         if list_files:
