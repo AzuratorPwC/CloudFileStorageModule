@@ -1,6 +1,4 @@
 
-Usage
-=====
 
 
 
@@ -30,6 +28,9 @@ dfdsfdssvvvvvvvvvvv
 
 Custom Storage Backends
 ~~~~~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+    cloud_storage_pwc.AzureStorage package
 
 
 przyklad uzycia https://raw.githubusercontent.com/delta-io/delta-rs/main/python/docs/source/usage.rst

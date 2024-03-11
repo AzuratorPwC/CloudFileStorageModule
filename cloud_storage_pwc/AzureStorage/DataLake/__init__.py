@@ -2,7 +2,6 @@
 
 import sys
 from ..StorageAccountVirtualClass import *
-
 from azure.storage.filedatalake import DataLakeServiceClient
 
 from azure.identity import DefaultAzureCredential
@@ -14,6 +13,7 @@ import logging
 from azure.core.exceptions import HttpResponseError,ResourceNotFoundError,ResourceExistsError
 
 class DataLake(StorageAccountVirtualClass):
+    """Class representing Data Lake"""
  
     def __init__(self, url:str, access_key:str=None, tenant_id:str=None, application_id:str=None,application_secret:str=None):
         super().__init__()
@@ -59,7 +59,23 @@ class DataLake(StorageAccountVirtualClass):
                 continue
 
     def save_binary_file(self,input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True,tries:int=3,bytes_length:int=None):
-        
+        """
+        Save a binary file to the specified container in the Data Lake.
+
+        Args:
+           | input_bytes (bytes): Bytes to be saved.
+           | container_name (str): The name of the container.
+           | directory_path (str): The path of the directory where the file is located.
+           | file_name (str): The name of the file to be saved.
+           | is_overwrite (bool, optional): Should the file be overwritten? Defaults to True.
+
+        Returns:
+           | None 
+
+        Raises:
+           | ContainerNotFound: If the specified container does not exist.
+           | NotAuthorizedToPerformThisOperation: If user is not authorized to perform this operation.
+        """
         
         for i in range(tries):
             save_try = 10
@@ -97,7 +113,22 @@ class DataLake(StorageAccountVirtualClass):
                 continue
     
     def read_binary_file(self, container_name:str, directory_path:str, file_name:str,tries:int=3)->bytes:
-        
+        """
+        Reads a binary file from the specified container and directory.
+
+        Args:
+           | container_name (str): The name of the container.
+           | directory_path (str): The path to the directory where the file is located.
+           | file_name (str): The name of the file.
+
+        Returns:
+            bytes: The content of the binary file.
+
+        Raises:
+           | ContainerNotFound: If the specified container does not exist.
+           | BlobNotFound: If the specified file does not exist in the container.
+           | NotAuthorizedToPerformThisOperation: If user is not authorized to perform this operation.
+        """
         
         for i in range(tries):
             try:
@@ -134,7 +165,22 @@ class DataLake(StorageAccountVirtualClass):
     
     
     def delete_file(self,container_name : str,directory_path : str,file_name:str,wait:bool=True,tries:int=3):
+        """
+        Deletes a file from the Data Lake.
 
+        Args:
+           | container_name (str): The name of the container where the file to be deleted is located.
+           | directory_path (str): The directory path within the container. Use an empty string for the root directory.
+           | file_name (str): The name of the file to be deleted.
+           | wait (bool, optional): The variable controls whether the code should pause briefly before checking the existence of a file in the container. Defaults to True.
+
+        Returns:
+            None
+
+        Raises:
+           | ContainerNotFound: If container do not exists.
+           | NotAuthorizedToPerformThisOperation: If user is not authorized to perform this operation.
+        """
         for i in range(tries):
             try:
                 try:
@@ -168,6 +214,22 @@ class DataLake(StorageAccountVirtualClass):
                             
                             
     def delete_files_by_prefix(self,container_name : str,directory_path : str,file_prefix:str, recursive:bool=False,wait:bool=True):
+        """
+        Deletes files from the Data Lake based on a prefix.
+
+        Args:
+           | container_name (str): The name of the container where files to be deleted are located.
+           | directory_path (str): The directory path within the container.
+           | file_prefix (str): The prefix of files to be deleted.
+           | recursive (bool, optional): Flag indicating whether to list files recursively. Defaults to False.
+           | wait (bool, optional): The variable controls whether the code should pause briefly before checking the existence of a file in the container. Defaults to True.
+
+        Returns:
+            None
+
+        Raises:
+            None
+        """
             
         
         files_exists = self.ls_files(container_name,directory_path,recursive)
@@ -185,6 +247,21 @@ class DataLake(StorageAccountVirtualClass):
                 files = [f for f in files_exists if f.split("/")[-1].startswith(file_prefix)]
         
     def delete_folder(self,container_name : str,directory_path : str,wait:bool=True):
+        """
+        Deletes a folder and its contents from the Data Lake.
+
+        Args:
+           | container_name (str): The name of the container containing the folder.
+           | directory_path (str): The path of the folder to be deleted.
+           | wait (bool, optional): If True, waits for the deletion to complete before returning. Defaults to True.
+
+        Returns:
+           | None
+           
+        Raises:
+           | ContainerNotFound: If container do not exists.
+           | NotAuthorizedToPerformThisOperation: If user is not authorized to perform this operation.
+        """
         try:
             file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
             if file_system_client.exists() is False:
@@ -210,6 +287,21 @@ class DataLake(StorageAccountVirtualClass):
             raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
     
     def file_exists(self, container_name : str,directory_path : str,file_name:str)->bool:
+        """
+        Checks whether the file exists within the Data Lake.
+
+        Args:
+           | container_name (str):  The name of the container.
+           | directory_path (str): The path of the directory where the file is located.
+           | file_name (str): The name of the file to be located.
+
+        Returns:
+            bool: The information about whether the file exists (True/False). 
+
+        Raises:
+           | ContainerNotFound: If container do not exists.
+           | NotAuthorizedToPerformThisOperation: If user is not authorized to perform this operation.
+        """
         try:
             file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
             if file_system_client.exists() is False:
@@ -224,6 +316,20 @@ class DataLake(StorageAccountVirtualClass):
             raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
             
     def folder_exists(self, container_name : str, directory_path : str)->bool:
+        """
+        Checks whether the folder exists within the Data Lake.
+
+        Args:
+           | container_name (str):  The name of the container.
+           | directory_path (str): The path of the directory where the folder is located.
+
+        Returns:
+            bool: The information about whether the folder exists (True/False). 
+
+        Raises:
+           | ContainerNotFound: If the specified container does not exist.
+           | NotAuthorizedToPerformThisOperation: If user is not authorized to perform this operation.
+        """
         try:
             file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
             if file_system_client.exists() is False:
@@ -239,13 +345,46 @@ class DataLake(StorageAccountVirtualClass):
                     
     
     def move_file(self,container_name : str,directory_path : str,file_name:str,new_container_name : str,new_directory_path : str,is_overwrite :bool=True,is_delete_source_file:bool=False):
+        """
+        Moves a file from one location to another within the Data Lake.
+
+        Args:
+           | container_name (str): The name of the container containing the source file.
+           | directory_path (str): The path of the directory containing the source file.
+           | file_name (str): The name of the source file to be moved.
+           | new_container_name (str): The name of the container where the file will be moved.
+           | new_directory_path (str): The path of the directory where the file will be moved.
+           | is_overwrite (bool, optional): If True, overwrites the destination file if it already exists. Defaults to True.
+           | is_delete_source_file (bool, optional): If True, deletes the source file after moving. Defaults to False.
+
+        Returns:
+           | None
+
+        Raises:
+           | None
+
+        """
   
         self.save_binary_file(self.read_binary_file(container_name,directory_path,file_name),new_container_name,new_directory_path,file_name,is_overwrite)
         if is_delete_source_file:
             self.delete_file(container_name ,directory_path ,file_name)
 
     def ls_files(self, container_name:str, directory_path:str, recursive:bool=False,tries:int=3)->list:
+        """
+        List files under a specified path within the Data Lake container.
+
+        Args:
+           | container_name (str): The name of the container.
+           | directory_path (str): The path within the container to list files from.
+           | recursive (bool, optional): Flag indicating whether to list files recursively. Defaults to False.
+
+        Returns:
+           | list: A list of file paths relative to the specified directory.
         
+        Raises:
+           | ContainerNotFound: If the specified container does not exist.
+           | NotAuthorizedToPerformThisOperation: If user is not authorized to perform this operation.
+        """
         for i in range(tries):
             try:
                 try:
@@ -273,13 +412,46 @@ class DataLake(StorageAccountVirtualClass):
                 time.sleep(1)
                 continue
         
-    def move_folder(self,container_name : str,directory_path : str,new_container_name : str,new_directory_path : str,is_overwrite :bool=True,is_delete_source_folder:bool=False)->bool:      
+    def move_folder(self,container_name : str,directory_path : str,new_container_name : str,new_directory_path : str,is_overwrite :bool=True,is_delete_source_folder:bool=False)->bool:  
+        """
+        Moves all files from one folder to another within the Data Lake.
+
+        Args:
+           | container_name (str): The name of the container containing the source folder.
+           | directory_path (str): The path of the source folder.
+           | new_container_name (str): The name of the container where the folder will be moved.
+           | new_directory_path (str): The path of the target directory where the folder will be moved.
+           | is_overwrite (bool, optional): If True, overwrites destination files if they already exist. Defaults to True.
+           | is_delete_source_folder (bool, optional): If True, deletes the source folder after moving. Defaults to False.
+
+        Returns:
+           | bool: True if the folder move operation is successful.
+
+        Raises:
+           | None 
+        """
         
         files_exists = self.ls_files(container_name,directory_path,True)
         for f in files_exists:
             self.move_file(container_name,directory_path,f"{f.removeprefix(directory_path)}/",new_container_name,new_directory_path,is_overwrite,is_delete_source_folder)
         
     def rename_file(self,container_name : str,directory_path : str,file_name:str,new_file_name:str):
+        """
+        Renames a file within a specified container in the Data Lake
+
+        Args:
+           | container_name (str): The name of the container containing the file.
+           | directory_path (str): The path of the directory containing the file.
+           | file_name (str): The name of the file to be renamed.
+           | new_file_name (str): The new name for the renamed file.
+
+        Returns:
+           | None
+
+        Raises:
+           | ContainerNotFound: If the specified container does not exist.
+           | NotAuthorizedToPerformThisOperation: If user is not authorized to perform this operation.
+        """
         try:
             file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
             if file_system_client.exists() is False:
@@ -294,6 +466,18 @@ class DataLake(StorageAccountVirtualClass):
             raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
     
     def rename_folder(self,container_name : str,directory_path : str,new_directory_path:str):
+        """
+        Renames a folder within a specified container in the Data Lake.
+
+        Args:
+           | container_name (str): The name of the container containing the folder.
+           | directory_path (str): The path of the folder to be renamed.
+           | new_directory_path (str): The new path for the renamed folder.
+
+        Raises:
+           | ContainerNotFound: If the specified container does not exist.
+           | NotAuthorizedToPerformThisOperation: If user is not authorized to perform this operation.
+        """
         try:
             file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
             if file_system_client.exists() is False:
@@ -309,9 +493,37 @@ class DataLake(StorageAccountVirtualClass):
             raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
         
     def create_empty_file(self,container_name : str,directory_path : str,file_name:str):
+        """
+        Creates an empty file within a specified container in teh Data Lake.
+
+        Args:
+           | container_name (str): The name of the container where the file will be created.
+           | directory_path (str): The directory path within the container. Use an empty string for the root directory.
+           | file_name (str): The name of the file to be created.
+
+        Returns:
+           | None
+
+        Raises:
+           | None
+        """
         self.save_binary_file(b' ',container_name,directory_path,file_name)
         
     def create_container(self,container_name : str,public_access:CONTAINER_ACCESS_TYPES ='Private'):
+        """
+        Creates a container in the Data Lake.
+
+        Args:
+           | container_name (str): The name of the container to create. 
+           | public_access (CONTAINER_ACCESS_TYPES, optional): The level of public access for the container. Defaults to 'Private'.
+
+        Returns:
+           | None 
+        
+        Raises:
+           | ContainerNotFound: If the specified container does not exist.
+           | NotAuthorizedToPerformThisOperation: If user is not authorized to perform this operation.
+        """
         try:
             container_client = self.__service_client.get_file_system_client(file_system=container_name)
             if not container_client.exists():
@@ -327,6 +539,15 @@ class DataLake(StorageAccountVirtualClass):
 
         
     def delete_container(self,container_name : str):
+        """
+        Deletes a container from the Data Lake.
+
+        Args:
+            container_name (str): The name of the container to delete. 
+
+        Raises:
+            NotAuthorizedToPerformThisOperation: If user is not authorized to perform this operation.
+        """
         try:
             container_client = self.__service_client.get_file_system_client(file_system=container_name)
             if container_client.exists():

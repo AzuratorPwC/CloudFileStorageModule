@@ -1,7 +1,6 @@
-Welcome to cloud_storage_pwc's documentation!
+Welcome to PwC's Cloud Storage Documentation!
 ===================================
 
-**cloud_storage_pwc** -------aaa
 
 
 .. note::
@@ -13,6 +12,6 @@ Contents
 
 .. toctree::
    installation
-   usage
+   usage2
    api
    
