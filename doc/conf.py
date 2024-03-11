@@ -19,10 +19,9 @@ import os
 #sys.path.append('/home/workspaces/CloudFileStorageModule/src')
 sys.path.insert(0, os.path.abspath('..'))
 
-project = 'cloud-storage'
-copyright = '2022, artur'
+project = 'Cloud Storage'
+copyright = '2024, artur'
 author = 'artur'
-release = '0.1'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -42,5 +41,15 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'furo'
 html_static_path = ['_static']
+html_theme_options = {
+    "light_css_variables": {
+        "color-brand-primary": "#e0301e",
+        "color-brand-content": "#dc6900",
+        "color-api-name": "#DC6900",
+        "color-api-pre-name": "#DC6900",
+        "color-api-background": "#efeff4f2"
+    },
+}
+html_title = "Cloud Storage Documentation"

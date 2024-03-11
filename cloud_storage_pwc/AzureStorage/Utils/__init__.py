@@ -21,16 +21,26 @@ class Utils:
     pass
 
 class DataFromExcel:
-    """
-    Creates a container in the Azure Blob Storage.
-    """
+    
     def __init__(self,df,sheet_name):
         self.data = df
         self.sheet_name = sheet_name
     
 def add_tech_columns(df:[pd.DataFrame,pl.DataFrame],container_name: str=None,directory_path:str=None,file:str = None):
     """
-    Creates a container in the Azure Blob Storage.
+    Adds technical columns to a DataFrame for tracking container information.
+
+    Args:
+       | df (pd.DataFrame, pl.DataFrame): The DataFrame to which technical columns will be added.
+       | container_name (str, optional): The name of the container. Defaults to None.
+       | directory_path (str, optional): The directory path of the container. Defaults to None.
+       | file (str, optional): The file path within the container. Defaults to None.
+
+    Returns:
+        pd.DataFrame or pl.DataFrame: The DataFrame with added technical columns.
+
+    Raises:
+        None
     """
     if directory_path is None or directory_path == "":
         directory_path =  "/".join(file.split("/")[:-1])
