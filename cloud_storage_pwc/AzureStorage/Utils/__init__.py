@@ -1,21 +1,19 @@
 from typing import Literal
 import pandas as pd
 import polars as pl
+import numpy as np
 
 ENGINE_TYPES = Literal['pandas', 'polars']
-DELIMITER_TYPES = Literal[';', '^','~',',','\t','|','◇','◆',' ']
-QUOTING_TYPES = Literal['"','|','~','^']
-ESCAPE_TYPES = Literal['\\','|','~','^']
+#DELIMITER_TYPES = Literal[';', '^','~',',','\t','|','◇','◆',' ']
+#QUOTING_TYPES = Literal['"','|','~','^']
+#ESCAPE_TYPES = Literal['\\','|','~','^']
 #QUOTING_TYPES = Literal['QUOTE_MINIMAL', 'QUOTE_ALL','QUOTE_NONNUMERIC','QUOTE_NONE']
 ENCODING_TYPES = Literal['UTF-8', 'UTF-16']
 COMPRESSION_TYPES = Literal['snappy', 'gzip', 'brotli']
 ORIENT_TYPES = Literal['records', 'columns']
 CONTAINER_ACCESS_TYPES = Literal['Container', 'Blob','Private']
-NAN_VALUES = ['', '#N/A', '#N/A N/A', '#NA', '-1.#IND', '-1.#QNAN', '-NaN', '-nan',
-        '1.#IND', '1.#QNAN',
-        '<NA>', 'NA', 'NULL', 'NaN', 'n/a', 'nan', 'null']
-
-
+NAN_VALUES_REGEX = [np.nan, '#N/A','N/A', '#NA', '-NaN', '-nan',
+        '<NA>', 'NA', 'NULL', 'NaN', 'n/a', 'nan', 'null','none',"NONE",'None' ]#,r'^\s*$']
 
 class Utils:
     pass

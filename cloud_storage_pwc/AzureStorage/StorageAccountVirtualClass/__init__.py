@@ -1,4 +1,5 @@
 import abc
+from atexit import register
 from io import BytesIO
 import pandas as pd
 import polars as pl
@@ -13,7 +14,7 @@ import polars as pl
 from ..Utils import *
 from ..Exceptions import *
 import logging
-
+import csv
 
 
 class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
@@ -51,7 +52,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
 
 
     @classmethod
-    def read_csv_bytes(cls,input_bytes:bytes,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8", delimiter :DELIMITER_TYPES= ',',is_first_row_as_header :bool= False,skip_rows:int=0, skip_blank_lines = True,quoting:QUOTING_TYPES=None):
+    def read_csv_bytes(cls,input_bytes:bytes,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8", delimiter :str= ',',is_first_row_as_header :bool= False,skip_rows:int=0, skip_blank_lines = True,quoting:str=None):
         """
         Reads a csv bytes and returns its content as a Pandas DataFrame.
 
@@ -76,20 +77,20 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 df = pd.read_csv(BytesIO(input_bytes),sep=delimiter,quoting=1,quotechar=quoting,engine="python",dtype='str',
                     header= 0 if is_first_row_as_header is True else None ,
                     encoding=encoding,skiprows=skip_rows,keep_default_na=False,
-                    na_values=NAN_VALUES,skip_blank_lines=skip_blank_lines)
+                    na_values=NAN_VALUES_REGEX,skip_blank_lines=skip_blank_lines)
             else:
                 df = pd.read_csv(BytesIO(input_bytes),sep=delimiter,engine="python",dtype='str',
                     header= 0 if is_first_row_as_header is True else None ,
                     encoding=encoding,skiprows=skip_rows,keep_default_na=False,
-                    na_values=NAN_VALUES,skip_blank_lines=skip_blank_lines)
+                    na_values=NAN_VALUES_REGEX,skip_blank_lines=skip_blank_lines)
                     
         elif engine =='polars':
             if quoting is not None:
                 df = pl.read_csv(BytesIO(input_bytes),separator=delimiter,has_header=is_first_row_as_header,encoding=encoding,
-                        skip_rows=skip_rows,null_values=NAN_VALUES,infer_schema_length=0,quote_char=quoting,)
+                        skip_rows=skip_rows,null_values=NAN_VALUES_REGEX,infer_schema_length=0,quote_char=quoting,)
             else:
                 df = pl.read_csv(BytesIO(input_bytes),separator=delimiter,has_header=is_first_row_as_header,encoding=encoding,
-                        skip_rows=skip_rows,null_values=NAN_VALUES,infer_schema_length=0)
+                        skip_rows=skip_rows,null_values=NAN_VALUES_REGEX,infer_schema_length=0)
         return df
 
     def read_parquet_bytes(self,input_bytes:bytes,engine:ENGINE_TYPES ='pandas',columns:list=None):
@@ -145,7 +146,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
     @abc.abstractmethod
-    def save_binary_file(self, input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True):
+    def save_binary_file(self, input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True,tries:int=3,bytes_length:int=None):
         """
        | Save a binary file to the specified container in the cloud storage.
 
@@ -185,8 +186,8 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
 
     def read_csv_file(self, container_name:str, directory_path:str, file_name:str,
                       engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8",
-                      delimiter:DELIMITER_TYPES=',', is_first_row_as_header:bool=False,
-                      skip_rows:int=0, skip_blank_lines=True,quoting:QUOTING_TYPES=None, tech_columns:bool=False):
+                      delimiter:str=',', is_first_row_as_header:bool=False,
+                      skip_rows:int=0, skip_blank_lines=True,quoting:str=None, tech_columns:bool=False):
         """
         Read a CSV file from the container and return the data as a DataFrame.
 
@@ -198,8 +199,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 Defaults to 'polars'.
            | encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
                 to "UTF-8".
-           | delimiter (DELIMITER_TYPES, optional): The delimiter used in the CSV file.Defaults to ','.
-           | is_first_row_as_header (bool, optional): Flag indicating whether the first row is
+            delimiter (str, optional): The delimiter used in the CSV file.
+                Defaults to ','.
+            is_first_row_as_header (bool, optional): Flag indicating whether the first row is
                 a header. Defaults to False.
            | skip_rows (int, optional): Number of rows to skip from the beginning of the file.
                 Defaults to 0.
@@ -221,7 +223,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             df =  add_tech_columns(df,container_name,directory_path.replace("\\","/"),file_name)
         return df
     
-    def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8", delimiter:DELIMITER_TYPES = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:QUOTING_TYPES=None,tech_columns:bool=False,recursive:bool=False):
+    def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8", delimiter:str = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:str=None,tech_columns:bool=False,recursive:bool=False):
         """
         Reads multiple csv files from a folder and returns their content as a Pandas DataFrame.
 
@@ -263,8 +265,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         else:
             raise FolderDataNotFound(f"Folder data {directory_path} not found in container {container_name}")
     
-    if isinstance(("aa","vdfdf"), list):
-        print("your object is a list !")
+
     
     def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine: ENGINE_TYPES ='polars',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets=None,is_check_sheet_exist:bool=False,tech_columns:bool=False):
         """
@@ -342,7 +343,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         return list_of_dff
     
     
-    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:DELIMITER_TYPES = ";",is_first_row_as_header:bool = True,quoting:QUOTING_TYPES=None,escape:ESCAPE_TYPES=None, engine: ENGINE_TYPES ='polars'):
+    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:str = ";",is_first_row_as_header:bool = True,quoting:str=None,escape:str=None, engine: ENGINE_TYPES ='polars',replace_to_empty="Default"):
         """
         Saves a Pandas DataFrame as CSV format.
       
@@ -365,21 +366,46 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Raises:
            | None
         """
+         
+        if replace_to_empty == "Default":
+            to_replace_list = NAN_VALUES_REGEX
+        elif isinstance(replace_to_empty, str):
+            to_replace_list=list(replace_to_empty,)
+        elif isinstance(replace_to_empty, list):
+            to_replace_list = replace_to_empty
+        
         
         if isinstance(df, pd.DataFrame):
             if df.empty:
-                return
-            df = df.replace('\n', ' ', regex=True)
+                return -1
+            df = df.replace({r"_x([0-9a-fA-F]{4})_": ""}, regex=True)
+            df = df.replace(regex='\r\n',value= ' ', ).replace(regex='\n',value= ' ')
+            
+            if replace_to_empty is not None:
+                df = df.replace(to_replace=to_replace_list, value="",regex=False)
+            
+            
             if engine != 'pandas':
+                df = df.astype(str)
                 df = pl.from_pandas(df)
 
         elif isinstance(df, pl.DataFrame):
             if df.is_empty():
-                return
-            df = df.with_columns(pl.col(pl.Utf8).str.replace_all("\n", " "))
+                return -1
+            df = df.with_columns(pl.col(pl.String).str.replace('\r\n', ' ',literal=False))
+            df = df.with_columns(pl.col(pl.String).str.replace('\n', ' ',literal=False))
+            df = df.with_columns(pl.col(pl.String).str.replace(r"_x([0-9a-fA-F]{4})_", "",literal=False))
+
+            if replace_to_empty is not None:
+                for x in to_replace_list:
+                    df = df.with_columns(pl.col(pl.String).str.replace(x, '',literal=True))
+            
+            #df = df.with_columns(pl.all().str.strip_chars())
+            #df=df.with_columns(pl.exclude(pl.Utf8).cast(str))
+            
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
-       
+        
         if partition_columns:
             partition_dict = {}
             for x in partition_columns:
@@ -406,9 +432,10 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                         buf = BytesIO()
                         df_reset = df_part.reset_index(drop=True)
                         if quoting is not None:
-                            df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=1,escapechar=escape)
+                            df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=csv.QUOTE_ALL,escapechar=escape,decimal='.',doublequote=False)
                         else:
-                            df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape)
+                            df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape,decimal='.',quoting=csv.QUOTE_NONE,doublequote=False)
+                        buf.flush()
                         buf.seek(0)
                         self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name  +"/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
 
@@ -421,33 +448,53 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                     if not(df_part.is_empty()):
                         buf = BytesIO()
                         df_reset = df_part
-                        if quoting is not None:
-                            df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header, quote_char=quoting, quote_style='always')
-                        else:
-                            df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_style='never')
-                        buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)                                      
+                        with pl.Config(
+                            thousands_separator=None,
+                            decimal_separator="."              
+                        ):
+                            if quoting is not None:
+                                df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header, quote_char=quoting, quote_style='always')
+                            else:
+                                df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_style='never')
+                            buf.flush()
+                            buf.seek(0)
+                            self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)                                      
         else:
             buf = BytesIO()
             
-            if isinstance(df, pd.DataFrame):
-                df.reset_index(drop=True,inplace=True)
-                if quoting is not None:
-                    df.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=1,escapechar=escape)
-                else:
-                    df.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape)
-            else:
-                if quoting is not None:
-                    df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_char=quoting,  quote_style="always")
-                else:
-                    df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header, quote_style="never")
-            buf.seek(0)
-
             if file_name:
                 file_name_check = file_name
             else:
                 file_name_check  = f"{uuid.uuid4().hex}.csv"
-            self.save_binary_file(buf.getvalue(),container_name ,directory_path,file_name_check,True)
+            
+            
+            if isinstance(df, pd.DataFrame):
+                df.reset_index(drop=True,inplace=True)
+                if quoting is not None:
+                    df.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,quotechar=quoting, quoting=csv.QUOTE_ALL,escapechar=escape,decimal='.',doublequote=False)
+                else:
+                    df.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape,decimal='.',quoting=csv.QUOTE_NONE,doublequote=False)
+                buf.flush()
+                buf.seek(0)
+            
+                self.save_binary_file(buf.getvalue(),container_name ,directory_path,file_name_check,True)
+            
+            else:  
+                with pl.Config(
+                    thousands_separator=None,
+                    decimal_separator="." 
+                ):
+                    if quoting is not None:
+                        df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_char=quoting,  quote_style="always")
+                    else:
+                        df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header, quote_style="never")
+            
+                    buf.flush()
+                    buf.seek(0)
+            
+                    self.save_binary_file(buf.getvalue(),container_name ,directory_path,file_name_check,True)
+            
+        return 0
     
     def save_dataframe_as_parquet(self,df,container_name : str,directory_path:str,engine: ENGINE_TYPES ='polars',partition_columns:list=None,compression:COMPRESSION_TYPES=None):
         """
@@ -505,7 +552,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                         buf = BytesIO()
                         df_part.to_parquet(buf,allow_truncated_timestamps=True, use_deprecated_int96_timestamps=True,compression=compression)
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" +"/".join(partition_path),f"{uuid.uuid4().hex}.parquet",True)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" +"/".join(partition_path),f"{uuid.uuid4().hex}.parquet",False)
 
                 if isinstance(df_part, pl.DataFrame):
                     for d1 in d:
@@ -516,7 +563,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                         buf = BytesIO()
                         df_part.write_parquet(buf,compression=compression)
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + "/".join(partition_path),f"{uuid.uuid4().hex}.parquet",False)
         else:
             buf = BytesIO()
             if isinstance(df, pd.DataFrame):
@@ -526,7 +573,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 df_reset = df
                 df.write_parquet(buf,compression=compression)
             buf.seek(0)
-            self.save_binary_file(buf.getvalue(),container_name ,directory_path,f"{uuid.uuid4().hex}.parquet",True)
+            self.save_binary_file(buf.getvalue(),container_name ,directory_path,f"{uuid.uuid4().hex}.parquet",False)
     
     
     def save_dataframe_as_xlsx(self, df,container_name : str,directory_path:str ,file_name:str,sheet_name:str,engine:ENGINE_TYPES ='polars',index=False,header=False):
@@ -798,6 +845,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
     
+
     def save_json_file(self, df, container_name: str, directory_path: str, file_name:str = None, engine: ENGINE_TYPES ='polars', orient:ORIENT_TYPES= 'records'):
         """
         Saves a Pandas or Polars DataFrame to a JSON file.
@@ -864,3 +912,67 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
            | None
         """
         raise NotImplementedError
+
+    @classmethod
+    def read_json_bytes(cls,input_bytes:bytes, orient: ORIENT_TYPES = 'records', engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8",quoting:QUOTING_TYPES=None):
+        """Class representing a StorageAccountVirtualClass"""
+        if engine == 'pandas':
+            if quoting is not None:
+                df = pd.read_json(BytesIO(input_bytes), quoting=1, quotechar=quoting, dtype='str',
+                    encoding=encoding, orient=orient)
+            else:
+                df = pd.read_json(BytesIO(input_bytes),dtype='str',
+                    encoding=encoding, orient=orient)
+        elif engine =='polars':
+            df = pl.read_json(BytesIO(input_bytes)) # infer_schema_length=0, encoding=encoding, null_values=NAN_VALUES, quote_char=quoting
+        return df
+
+    def read_json_file(self, container_name:str, directory_path:str, file_name:str, orient: ORIENT_TYPES = 'records',
+                      engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8", quoting:QUOTING_TYPES=None, tech_columns:bool=False):
+        """
+        Read a JSON file from an Azure Blob Storage container and return the data as a DataFrame.
+
+        Args:
+            container_name (str): The name of the Azure Blob Storage container.
+            directory_path (str): The path within the container where the CSV file is located.
+            sourcefile_name (str): The name of the CSV file to be read.
+            engine (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars').
+                Defaults to 'polars'.
+            encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
+                to "UTF-8".
+            tech_columns (bool, optional): Flag indicating whether to add technical columns (e.g.,
+                file path and name). Defaults to False.
+
+        Returns:
+            DataFrame: A DataFrame containing the data from the CSV file.
+        """  
+        download_bytes = self.read_binary_file(container_name,directory_path,file_name)
+        df = self.read_json_bytes(download_bytes, orient, engine, encoding, quoting=quoting)
+        
+        if tech_columns:
+            df =  add_tech_columns(df,container_name,directory_path.replace("\\","/"),file_name)
+        return df
+    
+    def read_json_folder(self,container_name:str,directory_path:str,orient: ORIENT_TYPES = 'records',
+                         engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8",quoting:QUOTING_TYPES=None,tech_columns:bool=False,recursive:bool=False):
+        list_files = self.ls_files(container_name,directory_path, recursive=recursive)
+        df = None
+        if list_files:
+            for f in list_files:
+                try:
+                    df_new = self.read_json_file(container_name,directory_path,str(f).removeprefix(directory_path),orient,engine,encoding,quoting, tech_columns)
+                    if engine=='pandas':
+                        if df is None:
+                            df = df_new
+                        else:
+                            df = pd.concat([df, df_new], axis=0, join="outer", ignore_index=True)
+                    elif engine =='polars':
+                        if df is None:
+                            df = df_new
+                        else:
+                            df = pl.concat([df, df_new])
+                except:
+                    print("Failed to read file " + f)
+            return df
+        else:
+            raise FolderDataNotFound(f"Folder data {directory_path} not found in container {container_name}")
