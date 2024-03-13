@@ -60,11 +60,11 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
            | input_bytes (bytes): The binary data to be read.
            | engine (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars'). Defaults to 'pandas'.
            | encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults to “UTF-8”.
-           | delimiter (DELIMITER_TYPES, optional): The delimiter used in the CSV file.Defaults to ‘,’.
-           | is_first_row_as_header Flag indicating whether the first row is a header. Defaults to False.
+           | delimiter (str, optional): The delimiter used in the CSV file.Defaults to ‘,’.
+           | is_first_row_as_header (bool, optional): Flag indicating whether the first row is a header. Defaults to False.
            | skip_rows (int, optional): Number of rows to skip from the beginning of the file. Defaults to 0.
            | skip_blank_lines (bool, optional): Flag indicating whether to skip blank lines. Defaults to True.
-           | quoting (QUOTING_TYPES, optional): Determines the quoting behavior for text fields when writing data to a CSV file. Defaults to None.
+           | quoting (str, optional): Determines the quoting behavior for text fields when writing data to a CSV file. Defaults to None.
 
         Returns:
            | pd.DataFrame: A Pandas DataFrame containing the content of the csv bytes.
@@ -148,11 +148,11 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def save_binary_file(self, input_bytes:bytes, container_name:str, directory_path:str,file_name:str,is_overwrite:bool=True,tries:int=3,bytes_length:int=None):
         """
-       | Save a binary file to the specified container in the cloud storage.
+       | Save a binary file to the specified container.
 
         Args:
            | inputbytes (bytes): The binary data to be saved.
-           | container_name (str): The name of the container in the cloud storage.
+           | container_name (str): The name of the container.
            | directory_path (str): The directory path within the container to save the file.
            | file_name (str): The name of the file to be saved.
            | encoding (ENCODING_TYPES, optional): The encoding type of the input data. Defaults to "UTF-8".
@@ -228,15 +228,15 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Reads multiple csv files from a folder and returns their content as a Pandas DataFrame.
 
         Args:
-           | container_name (str): The name of the container containing the csv file.
-           | directory_path (str): The path of the directory containing the csv file.
+           | container_name (str): The name of the container containing the csv files.
+           | directory_path (str): The path of the directory containing the csv files.
            | engine (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to ‘polars’.
            | encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults to “UTF-8”.
-           | delimiter (DELIMITER_TYPES, optional): The delimiter used in the CSV file.Defaults to ‘,’.
+           | delimiter (str, optional): The delimiter used in the CSV file.Defaults to ‘,’.
            | is_first_row_as_header (bool, optional): Flag indicating whether the first row is a header. Defaults to False.
-           | skip_rows (int, optional): Number of rows to skip from the beginning of the file. Defaults to 0.
+           | skip_rows (int, optional): Number of rows to skip from the beginning of the files. Defaults to 0.
            | skip_blank_lines (bool, optional): Flag indicating whether to skip blank lines. Defaults to True.
-           | quoting (QUOTING_TYPES, optional): Determines the quoting behavior for text fields when writing data to a CSV file. Defaults to None.
+           | quoting (str, optional): Determines the quoting behavior for text fields when reading data from CSV files. Defaults to None.
            | tech_columns (bool, optional): Flag indicating whether to add technical columns (e.g., file path and name). Defaults to False.
            | recursive (bool, optional): If True, includes files from subdirectories. Defaults to False.
 
@@ -348,17 +348,18 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Saves a Pandas DataFrame as CSV format.
       
         Args:
-           | df (_type_): The DataFrame to be saved.
+           | df (Pandas DataFrame): The DataFrame to be saved.
            | container_name (str): The name of the container.
            | directory_path (str): The path of the directory within the container.
            | file_name (str, optional): The name of the file to be created. Defaults to None.
            | partition_columns (list, optional): A list of columns to be used for partitioning the data. Defaults to None.
            | encoding (ENCODING_TYPES, optional): The encoding type of the input data. Defaults to "UTF-8".
-           | delimiter (DELIMITER_TYPES, optional): The delimiter used in the CSV file.Defaults to ','.
+           | delimiter (str, optional): The delimiter used in the CSV file.Defaults to ';'.
            | is_first_row_as_header (bool, optional): Flag indicating whether the first row is a header. Defaults to False.  
-           | quoting (QUOTING_TYPES, optional): Determines the quoting behavior for text fields when writing dataframe to a CSV file.
-           | escape (ESCAPE_TYPES, optional): Character used to escape sep and quotechar when appropriate. Defaults to None.
+           | quoting (str, optional): Determines the quoting behavior for text fields when writing dataframe to a CSV file.
+           | escape (str, optional): Character used to escape sep and quotechar when appropriate. Defaults to None.
            | engine (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'polars'.
+           | replace_to_empty (str, optional): Determine the values that should be replaced with an empty string in the DataFrame before saving it as a CSV file. Defaults to "Default".
 
         Returns:
            | None 
@@ -915,7 +916,21 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
 
     @classmethod
     def read_json_bytes(cls,input_bytes:bytes, orient: ORIENT_TYPES = 'records', engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8",quoting:str=None):
-        """Class representing a StorageAccountVirtualClass"""
+        """Reads a json bytes and returns its content as a Pandas DataFrame.
+
+        Args:
+           | input_bytes (bytes): The binary data to be read.
+           | orient (ORIENT_TYPES, optional):  The JSON orientation type ('records', 'split', 'index', 'columns', or 'values'). Defaults to 'records'.
+           | engine (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to 'pandas'.
+           | encoding (ENCODING_TYPES, optional):  The encoding type of the json file. Defaults to "UTF-8".
+           | quoting (str, optional): Determines the quoting behavior for text fields when writing data to a json file. Defaults to None.
+
+        Returns:
+            pd.DataFrame: A Pandas DataFrame containing the content of the json file.
+
+        Raises:
+            None
+        """
         if engine == 'pandas':
             if quoting is not None:
                 df = pd.read_json(BytesIO(input_bytes), quoting=1, quotechar=quoting, dtype='str',
@@ -930,17 +945,17 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
     def read_json_file(self, container_name:str, directory_path:str, file_name:str, orient: ORIENT_TYPES = 'records',
                       engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8", quoting:str=None, tech_columns:bool=False):
         """
-        Read a JSON file from an Azure Blob Storage container and return the data as a DataFrame.
+        Read a JSON file from a container and return the data as a DataFrame.
 
         Args:
-            container_name (str): The name of the Azure Blob Storage container.
-            directory_path (str): The path within the container where the CSV file is located.
-            sourcefile_name (str): The name of the CSV file to be read.
-            engine (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars').
+           | container_name (str): The name of the container.
+           | directory_path (str): The path within the container where the CSV file is located.
+           | sourcefile_name (str): The name of the CSV file to be read.
+           | engine (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars').
                 Defaults to 'polars'.
-            encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
+           | encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
                 to "UTF-8".
-            tech_columns (bool, optional): Flag indicating whether to add technical columns (e.g.,
+           | tech_columns (bool, optional): Flag indicating whether to add technical columns (e.g.,
                 file path and name). Defaults to False.
 
         Returns:
@@ -955,6 +970,24 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
     
     def read_json_folder(self,container_name:str,directory_path:str,orient: ORIENT_TYPES = 'records',
                          engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8",quoting:str=None,tech_columns:bool=False,recursive:bool=False):
+        """Reads multiple json files from a folder and returns their content as a Pandas DataFrame.
+
+        Args:
+           | container_name (str): The name of the container containing the json fils.
+           | directory_path (str): The path of the directory containing the json files.
+           | orient (ORIENT_TYPES, optional):  The JSON orientation type ('records', 'split', 'index', 'columns', or 'values'). Defaults to 'records'.
+           | engine (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to 'polars'.
+           | encoding (ENCODING_TYPES, optional): The encoding type of the json files. Defaults to "UTF-8".
+           | quoting (str, optional): Determines the quoting behavior for text fields when reading data from a json files. Defaults to None.
+           | tech_columns (bool, optional): Flag indicating whether to add technical columns. Defaults to False.
+           | recursive (bool, optional): If True, includes files from subdirectories. Defaults to False.
+
+        Returns:
+            pd.DataFrame: A Pandas DataFrame containing the content of the folder.
+
+        Raises:
+            FolderDataNotFound: If the specified folder does not exist.
+        """
         list_files = self.ls_files(container_name,directory_path, recursive=recursive)
         df = None
         if list_files:
