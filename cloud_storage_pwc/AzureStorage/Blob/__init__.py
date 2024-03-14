@@ -488,3 +488,5 @@ class Blob(StorageAccountVirtualClass):
                 container_client.delete_container()
         except HttpResponseError as e:
             raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
+        
+       

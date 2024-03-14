@@ -12,6 +12,6 @@ Contents
 
 .. toctree::
    installation
-   usage2
+   APIReference
    api
    

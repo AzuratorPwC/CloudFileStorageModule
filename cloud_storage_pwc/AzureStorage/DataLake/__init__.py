@@ -554,3 +554,4 @@ class DataLake(StorageAccountVirtualClass):
                 container_client.delete_file_system()
         except HttpResponseError as e:
             raise NotAuthorizedToPerformThisOperation(f"User is not authorized to perform this operation") from e
+
