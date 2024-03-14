@@ -18,7 +18,6 @@ import csv
 
 
 class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
-    """Class representing StorageAccountVirtualClass"""
 
     @classmethod
     def __subclasshook__(cls, subclass):
