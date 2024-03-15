@@ -1,7 +1,7 @@
 
 
 import sys
-from ..StorageAccountVirtualClass import *
+from ..StorageUtillity import *
 from azure.storage.filedatalake import DataLakeServiceClient
 
 from azure.identity import DefaultAzureCredential
@@ -12,7 +12,7 @@ from ..Exceptions import *
 import logging
 from azure.core.exceptions import HttpResponseError,ResourceNotFoundError,ResourceExistsError
 
-class DataLake(StorageAccountVirtualClass):
+class DataLake(StorageUtillity):
     """Class representing Data Lake"""
  
     def __init__(self, url:str, access_key:str=None, tenant_id:str=None, application_id:str=None,application_secret:str=None):
@@ -63,11 +63,11 @@ class DataLake(StorageAccountVirtualClass):
         Save a binary file to the specified container in the Data Lake.
 
         Args:
-           | input_bytes (bytes): Bytes to be saved.
-           | container_name (str): The name of the container.
-           | directory_path (str): The path of the directory where the file is located.
-           | file_name (str): The name of the file to be saved.
-           | is_overwrite (bool, optional): Should the file be overwritten? Defaults to True.
+           | **input_bytes** (bytes): Bytes to be saved.
+           | **container_name** (str): The name of the container.
+           | **directory_path** (str): The path of the directory where the file is located.
+           | **file_name** (str): The name of the file to be saved.
+           | **is_overwrite** (bool, optional): Should the file be overwritten? Defaults to True.
 
         Returns:
            | None 
@@ -117,9 +117,9 @@ class DataLake(StorageAccountVirtualClass):
         Reads a binary file from the specified container and directory.
 
         Args:
-           | container_name (str): The name of the container.
-           | directory_path (str): The path to the directory where the file is located.
-           | file_name (str): The name of the file.
+           | **container_name** (str): The name of the container.
+           | **directory_path** (str): The path to the directory where the file is located.
+           | **file_name** (str): The name of the file.
 
         Returns:
             bytes: The content of the binary file.
@@ -169,10 +169,10 @@ class DataLake(StorageAccountVirtualClass):
         Deletes a file from the Data Lake.
 
         Args:
-           | container_name (str): The name of the container where the file to be deleted is located.
-           | directory_path (str): The directory path within the container. Use an empty string for the root directory.
-           | file_name (str): The name of the file to be deleted.
-           | wait (bool, optional): The variable controls whether the code should pause briefly before checking the existence of a file in the container. Defaults to True.
+           | **container_name** (str): The name of the container where the file to be deleted is located.
+           | **directory_path** (str): The directory path within the container. Use an empty string for the root directory.
+           | **file_name** (str): The name of the file to be deleted.
+           | **wait** (bool, optional): The variable controls whether the code should pause briefly before checking the existence of a file in the container. Defaults to True.
 
         Returns:
             None
@@ -218,11 +218,11 @@ class DataLake(StorageAccountVirtualClass):
         Deletes files from the Data Lake based on a prefix.
 
         Args:
-           | container_name (str): The name of the container where files to be deleted are located.
-           | directory_path (str): The directory path within the container.
-           | file_prefix (str): The prefix of files to be deleted.
-           | recursive (bool, optional): Flag indicating whether to list files recursively. Defaults to False.
-           | wait (bool, optional): The variable controls whether the code should pause briefly before checking the existence of a file in the container. Defaults to True.
+           | **container_name** (str): The name of the container where files to be deleted are located.
+           | **directory_path** (str): The directory path within the container.
+           | **file_prefix** (str): The prefix of files to be deleted.
+           | **recursive** (bool, optional): Flag indicating whether to list files recursively. Defaults to False.
+           | **wait** (bool, optional): The variable controls whether the code should pause briefly before checking the existence of a file in the container. Defaults to True.
 
         Returns:
             None
@@ -251,9 +251,9 @@ class DataLake(StorageAccountVirtualClass):
         Deletes a folder and its contents from the Data Lake.
 
         Args:
-           | container_name (str): The name of the container containing the folder.
-           | directory_path (str): The path of the folder to be deleted.
-           | wait (bool, optional): If True, waits for the deletion to complete before returning. Defaults to True.
+           | **container_name** (str): The name of the container containing the folder.
+           | **directory_path** (str): The path of the folder to be deleted.
+           | **wait** (bool, optional): If True, waits for the deletion to complete before returning. Defaults to True.
 
         Returns:
            | None
@@ -291,9 +291,9 @@ class DataLake(StorageAccountVirtualClass):
         Checks whether the file exists within the Data Lake.
 
         Args:
-           | container_name (str):  The name of the container.
-           | directory_path (str): The path of the directory where the file is located.
-           | file_name (str): The name of the file to be located.
+           | **container_name** (str):  The name of the container.
+           | **directory_path** (str): The path of the directory where the file is located.
+           | **file_name** (str): The name of the file to be located.
 
         Returns:
             bool: The information about whether the file exists (True/False). 
@@ -320,8 +320,8 @@ class DataLake(StorageAccountVirtualClass):
         Checks whether the folder exists within the Data Lake.
 
         Args:
-           | container_name (str):  The name of the container.
-           | directory_path (str): The path of the directory where the folder is located.
+           | **container_name** (str):  The name of the container.
+           | **directory_path** (str): The path of the directory where the folder is located.
 
         Returns:
             bool: The information about whether the folder exists (True/False). 
@@ -349,13 +349,13 @@ class DataLake(StorageAccountVirtualClass):
         Moves a file from one location to another within the Data Lake.
 
         Args:
-           | container_name (str): The name of the container containing the source file.
-           | directory_path (str): The path of the directory containing the source file.
-           | file_name (str): The name of the source file to be moved.
-           | new_container_name (str): The name of the container where the file will be moved.
-           | new_directory_path (str): The path of the directory where the file will be moved.
-           | is_overwrite (bool, optional): If True, overwrites the destination file if it already exists. Defaults to True.
-           | is_delete_source_file (bool, optional): If True, deletes the source file after moving. Defaults to False.
+           | **container_name** (str): The name of the container containing the source file.
+           | **directory_path** (str): The path of the directory containing the source file.
+           | **file_name** (str): The name of the source file to be moved.
+           | **new_container_name** (str): The name of the container where the file will be moved.
+           | **new_directory_path** (str): The path of the directory where the file will be moved.
+           | **is_overwrite** (bool, optional): If True, overwrites the destination file if it already exists. Defaults to True.
+           | **is_delete_source_file** (bool, optional): If True, deletes the source file after moving. Defaults to False.
 
         Returns:
            | None
@@ -374,9 +374,9 @@ class DataLake(StorageAccountVirtualClass):
         List files under a specified path within the Data Lake container.
 
         Args:
-           | container_name (str): The name of the container.
-           | directory_path (str): The path within the container to list files from.
-           | recursive (bool, optional): Flag indicating whether to list files recursively. Defaults to False.
+           | **container_name** (str): The name of the container.
+           | **directory_path** (str): The path within the container to list files from.
+           | **recursive** (bool, optional): Flag indicating whether to list files recursively. Defaults to False.
 
         Returns:
            | list: A list of file paths relative to the specified directory.
@@ -417,12 +417,12 @@ class DataLake(StorageAccountVirtualClass):
         Moves all files from one folder to another within the Data Lake.
 
         Args:
-           | container_name (str): The name of the container containing the source folder.
-           | directory_path (str): The path of the source folder.
-           | new_container_name (str): The name of the container where the folder will be moved.
-           | new_directory_path (str): The path of the target directory where the folder will be moved.
-           | is_overwrite (bool, optional): If True, overwrites destination files if they already exist. Defaults to True.
-           | is_delete_source_folder (bool, optional): If True, deletes the source folder after moving. Defaults to False.
+           | **container_name** (str): The name of the container containing the source folder.
+           | **directory_path** (str): The path of the source folder.
+           | **new_container_name** (str): The name of the container where the folder will be moved.
+           | **new_directory_path** (str): The path of the target directory where the folder will be moved.
+           | **is_overwrite** (bool, optional): If True, overwrites destination files if they already exist. Defaults to True.
+           | **is_delete_source_folder** (bool, optional): If True, deletes the source folder after moving. Defaults to False.
 
         Returns:
            | bool: True if the folder move operation is successful.
@@ -440,10 +440,10 @@ class DataLake(StorageAccountVirtualClass):
         Renames a file within a specified container in the Data Lake
 
         Args:
-           | container_name (str): The name of the container containing the file.
-           | directory_path (str): The path of the directory containing the file.
-           | file_name (str): The name of the file to be renamed.
-           | new_file_name (str): The new name for the renamed file.
+           | **container_name** (str): The name of the container containing the file.
+           | **directory_path** (str): The path of the directory containing the file.
+           | **file_name** (str): The name of the file to be renamed.
+           | **new_file_name** (str): The new name for the renamed file.
 
         Returns:
            | None
@@ -470,9 +470,9 @@ class DataLake(StorageAccountVirtualClass):
         Renames a folder within a specified container in the Data Lake.
 
         Args:
-           | container_name (str): The name of the container containing the folder.
-           | directory_path (str): The path of the folder to be renamed.
-           | new_directory_path (str): The new path for the renamed folder.
+           | **container_name** (str): The name of the container containing the folder.
+           | **directory_path** (str): The path of the folder to be renamed.
+           | **new_directory_path** (str): The new path for the renamed folder.
 
         Raises:
            | ContainerNotFound: If the specified container does not exist.
@@ -497,9 +497,9 @@ class DataLake(StorageAccountVirtualClass):
         Creates an empty file within a specified container in teh Data Lake.
 
         Args:
-           | container_name (str): The name of the container where the file will be created.
-           | directory_path (str): The directory path within the container. Use an empty string for the root directory.
-           | file_name (str): The name of the file to be created.
+           | **container_name** (str): The name of the container where the file will be created.
+           | **directory_path** (str): The directory path within the container. Use an empty string for the root directory.
+           | **file_name** (str): The name of the file to be created.
 
         Returns:
            | None
@@ -514,8 +514,8 @@ class DataLake(StorageAccountVirtualClass):
         Creates a container in the Data Lake.
 
         Args:
-           | container_name (str): The name of the container to create. 
-           | public_access (CONTAINER_ACCESS_TYPES, optional): The level of public access for the container. Defaults to 'Private'.
+           | **container_name** (str): The name of the container to create. 
+           | **public_access** (CONTAINER_ACCESS_TYPES, optional): The level of public access for the container. Defaults to 'Private'.
 
         Returns:
            | None 
@@ -543,7 +543,7 @@ class DataLake(StorageAccountVirtualClass):
         Deletes a container from the Data Lake.
 
         Args:
-            container_name (str): The name of the container to delete. 
+            **container_name** (str): The name of the container to delete. 
 
         Raises:
             NotAuthorizedToPerformThisOperation: If user is not authorized to perform this operation.
