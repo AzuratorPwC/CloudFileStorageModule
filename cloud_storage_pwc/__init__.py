@@ -82,7 +82,7 @@ def azure_storage(accountname_or_url:str,access_key:str=None,tenant_id:str=None,
             if azure_credential == "DefaultAzureCredential":
                 credential = DefaultAzureCredential()
             elif azure_credential == "InteractiveBrowserCredential":
-                credential = DeviceCodeCredential()
+                credential = InteractiveBrowserCredential()
             elif azure_credential == 'DeviceCodeCredential':
                 credential = DeviceCodeCredential()
             try:
