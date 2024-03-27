@@ -14,6 +14,7 @@ ORIENT_TYPES = Literal['records', 'columns']
 CONTAINER_ACCESS_TYPES = Literal['Container', 'Blob','Private']
 NAN_VALUES_REGEX = [np.nan, '#N/A','N/A', '#NA', '-NaN', '-nan',
         '<NA>', 'NA', 'NULL', 'NaN', 'n/a', 'nan', 'null','none',"NONE",'None' ]#,r'^\s*$']
+AZURE_CREDENTIAL_TYPES =  Literal['DefaultAzureCredential','InteractiveBrowserCredential','DeviceCodeCredential']
 
 class Utils:
     pass

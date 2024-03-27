@@ -11,22 +11,13 @@ from ..Utils import *
 
 class Blob(StorageAccountVirtualClass):
     """Class representing Azure Blob Storage"""
-    def __init__(self, url:str, access_key:str=None, tenant_id:str=None, application_id:str=None,
-                 application_secret:str=None):
+    def __init__(self, url:str, access_key:str=None,credential=None):
         super().__init__()
         try:
-            if access_key is not None and tenant_id is None and application_id is None \
-                and application_secret is None:
-                self.__service_client = BlobServiceClient(account_url=url, credential=access_key,logging_enable=False)
-            elif access_key is None and tenant_id is None and application_id is None \
-                and application_secret is None:
-                credential = DefaultAzureCredential()
-                self.__service_client = BlobServiceClient(account_url=url, credential=credential,logging_enable=False)
-            elif access_key is None and tenant_id is not None and application_id is not None \
-                and application_secret is not None:
-                token_credential = ClientSecretCredential(tenant_id, application_id,application_secret)
-                self.__service_client = BlobServiceClient(account_url=url,
-                                                          credential=token_credential,logging_enable=False)
+            if access_key is not None and credential is None:
+                self.__service_client = BlobServiceClient(account_url=url, credential=access_key)
+            else:
+                self.__service_client = BlobServiceClient(account_url=url, credential=credential)
                 
             containers = self.__service_client.list_containers()     
             con_num=len(list(containers))
