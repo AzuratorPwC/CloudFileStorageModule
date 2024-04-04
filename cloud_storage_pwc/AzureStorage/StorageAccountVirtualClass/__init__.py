@@ -407,7 +407,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             if engine == 'pandas':
                 df = pd.DataFrame.from_dict(df,dtype='str')
             elif engine == 'polars':
-                df = pl.DataFrame(df,infer_schema_length=300)
+                df = pl.DataFrame(df,infer_schema_length=1000)
         
         if partition_columns:
             partition_dict = {}
