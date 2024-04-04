@@ -403,13 +403,11 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
-        elif isinstance(df, list) and isinstance(df[0],dict):
-            if engine == 'pandas':
-                df = pd.DataFrame.from_dict(df)
-            elif engine == 'polars':
-                df = pl.DataFrame(df)
         else:
-            raise ValueError("Invalid DataFrame type")
+            if engine == 'pandas':
+                df = pd.DataFrame.from_dict(df,dtype='str')
+            elif engine == 'polars':
+                df = pl.DataFrame(df,infer_schema_length=300)
         
         if partition_columns:
             partition_dict = {}
@@ -487,7 +485,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             else:  
                 with pl.Config(
                     thousands_separator=None,
-                    decimal_separator="." 
+                    decimal_separator="."
                 ):
                     if quoting is not None:
                         df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_char=quoting,  quote_style="always")
@@ -534,13 +532,11 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             #df = df.with_columns(pl.col(pl.Utf8).str.replace_all(r"\\n", ""))
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
-        elif isinstance(df, list) and isinstance(df[0],dict):
+        else:
             if engine == 'pandas':
                 df = pd.DataFrame.from_dict(df)
             elif engine == 'polars':
                 df = pl.DataFrame(df)
-        else:
-            raise ValueError("Invalid DataFrame type")
                 
         if partition_columns:
             partition_dict = {}
