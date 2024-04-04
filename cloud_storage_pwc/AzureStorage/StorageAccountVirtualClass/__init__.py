@@ -406,10 +406,16 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 df = df.to_pandas(use_pyarrow_extension_array=True)
         else:
             if engine == 'pandas':
-                df = pd.DataFrame.from_dict(df,dtype='str')
+                try:
+                    df = pd.DataFrame.from_dict(df)
+                except:
+                    df = pd.DataFrame.from_dict(df,dtype='str')
             elif engine == 'polars':
-                schema  = {f"{k}":pl.String for k in df[0].keys()}
-                df = pl.from_dicts(df,schema_overrides=schema)
+                try:
+                    df = pl.from_dicts(df,infer_schema_length=300)
+                except:    
+                    schema  = {f"{k}":pl.String for k in df[0].keys()}
+                    df = pl.from_dicts(df,schema_overrides=schema)
         
         if partition_columns:
             partition_dict = {}
@@ -488,6 +494,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 with pl.Config(
                     thousands_separator=None,
                     decimal_separator="."
+                    
                 ):
                     if quoting is not None:
                         df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_char=quoting,  quote_style="always")
