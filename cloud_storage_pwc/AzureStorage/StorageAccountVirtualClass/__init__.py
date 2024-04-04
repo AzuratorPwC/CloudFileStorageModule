@@ -15,6 +15,7 @@ from ..Exceptions import *
 import csv
 
 
+
 class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
 
     @classmethod
@@ -407,7 +408,8 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             if engine == 'pandas':
                 df = pd.DataFrame.from_dict(df,dtype='str')
             elif engine == 'polars':
-                df = pl.DataFrame(df,infer_schema_length=1000)
+                schema  = {f"{k}":pl.String for k in df[0].keys()}
+                df = pl.from_dicts(df,schema_overrides=schema)
         
         if partition_columns:
             partition_dict = {}
