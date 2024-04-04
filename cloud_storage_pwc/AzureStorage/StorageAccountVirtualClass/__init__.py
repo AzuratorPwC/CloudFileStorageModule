@@ -365,16 +365,20 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Raises:
            | None
         """
-         
+        output_info = {"container_name":container_name,"directory_path":directory_path,"file_name":file_name,
+                       "partition_columns":partition_columns,"encoding":encoding,
+                       "delimiter":delimiter,"is_first_row_as_header":is_first_row_as_header,
+                       "quoting":quoting,"escape":escape,"engine":engine}
         if replace_to_empty == "Default":
             to_replace_list = NAN_VALUES_REGEX
         elif isinstance(replace_to_empty, str):
             to_replace_list=list(replace_to_empty,)
         elif isinstance(replace_to_empty, list):
             to_replace_list = replace_to_empty
-        
+        output_info["replace_to_empty"] = to_replace_list
         
         if isinstance(df, pd.DataFrame):
+            output_info["type_input"] = "df_polars"
             if df.empty:
                 return -1
             #df = df.replace({r"_x([0-9a-fA-F]{4})_": ""}, regex=True)
@@ -389,6 +393,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 df = pl.from_pandas(df)
 
         elif isinstance(df, pl.DataFrame):
+            output_info["type_input"] = "df_pandas"
             if df.is_empty():
                 return -1
             df = df.with_columns(pl.col(pl.String).str.replace('\r\n', ' ',literal=False))
@@ -405,19 +410,26 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
         else:
+            output_info["type_input"] = "list_object"
+            
             if engine == 'pandas':
                 try:
+                    output_info["convert_to_str"] = False
                     df = pd.DataFrame.from_dict(df)
                 except:
+                    output_info["convert_to_str"] = True
                     df = pd.DataFrame.from_dict(df,dtype='str')
             elif engine == 'polars':
                 try:
+                    output_info["convert_to_str"] = False
                     df = pl.from_dicts(df,infer_schema_length=300)
-                except:    
+                except:
+                    output_info["convert_to_str"] = True
                     schema  = {f"{k}":pl.String for k in df[0].keys()}
                     df = pl.from_dicts(df,schema_overrides=schema)
         
         if partition_columns:
+            output_info["file_paths"] = list()
             partition_dict = {}
             for x in partition_columns:
                 partition_dict[x] = df[x].unique()
@@ -448,8 +460,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                             df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape,decimal='.',quoting=csv.QUOTE_NONE,doublequote=False)
                         buf.flush()
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name  +"/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
-
+                        file_name_part = f"{uuid.uuid4().hex}.csv"
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name  +"/".join(partition_path),file_name_part,True)
+                        output_info["file_paths"].append("/".join(partition_path)+"/"+file_name_part)
 
                 if isinstance(df_part, pl.DataFrame):
                     for d1 in d:
@@ -469,7 +482,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                                 df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_style='never')
                             buf.flush()
                             buf.seek(0)
-                            self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)                                      
+                            file_name_part = f"{uuid.uuid4().hex}.csv"
+                            self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/".join(partition_path),file_name_part,True)
+                            output_info["file_paths"].append("/".join(partition_path)+"/"+file_name_part)                   
         else:
             buf = BytesIO()
             
@@ -505,8 +520,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                     buf.seek(0)
             
                     self.save_binary_file(buf.getvalue(),container_name ,directory_path,file_name_check,True)
+            output_info["file_paths"]=file_name_check
             
-        return 0
+        return output_info
     
     def save_dataframe_as_parquet(self,df,container_name : str,directory_path:str,engine: ENGINE_TYPES ='polars',partition_columns:list=None,compression:COMPRESSION_TYPES=None):
         """
