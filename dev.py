@@ -3,8 +3,6 @@ from azure.storage.blob import BlobServiceClient
 import pytest
 import pandas as pd
 from cloud_storage_pwc import azure_storage
-pytest.blob_account = "strfunpbilandingdev"
-pytest.blob_account_key = "YoCndTiLJAGGmH/KsgwDTsm/Ly4ERapgCp6Q5Ftc4wQqpu8r92GaFutVMoHUuF36QSt2oapnPkeA+ASt8ZGe6A=="
 
         
 container_name = "csv1check"
