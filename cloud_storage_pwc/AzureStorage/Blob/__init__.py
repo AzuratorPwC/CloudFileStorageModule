@@ -1,9 +1,6 @@
 import os
 import time
-import logging
 from azure.storage.blob import BlobServiceClient
-from azure.identity import ClientSecretCredential
-from azure.identity import DefaultAzureCredential
 from azure.core.exceptions import HttpResponseError,ResourceNotFoundError,ResourceExistsError
 from ..Exceptions import *
 from ..StorageAccountVirtualClass import StorageAccountVirtualClass

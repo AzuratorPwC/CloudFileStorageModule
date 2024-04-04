@@ -16,16 +16,8 @@ NAN_VALUES_REGEX = [np.nan, '#N/A','N/A', '#NA', '-NaN', '-nan',
         '<NA>', 'NA', 'NULL', 'NaN', 'n/a', 'nan', 'null','none',"NONE",'None' ]#,r'^\s*$']
 AZURE_CREDENTIAL_TYPES =  Literal['DefaultAzureCredential','InteractiveBrowserCredential','DeviceCodeCredential']
 
-class Utils:
-    pass
 
-class DataFromExcel:
-    
-    def __init__(self,df,sheet_name):
-        self.data = df
-        self.sheet_name = sheet_name
-    
-def add_tech_columns(df:[pd.DataFrame,pl.DataFrame],container_name: str=None,directory_path:str=None,file:str = None):
+def add_tech_columns(df,container_name: str=None,directory_path:str=None,file:str = None):
     """
     Adds technical columns to a DataFrame for tracking container information.
 

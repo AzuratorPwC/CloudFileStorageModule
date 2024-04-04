@@ -3,13 +3,9 @@
 import sys
 from ..StorageAccountVirtualClass import *
 from azure.storage.filedatalake import DataLakeServiceClient
-
-from azure.identity import DefaultAzureCredential,InteractiveBrowserCredential
-from azure.identity import ClientSecretCredential
 import time
 from ..Utils import *
 from ..Exceptions import *
-import logging
 from azure.core.exceptions import HttpResponseError,ResourceNotFoundError,ResourceExistsError
 
 class DataLake(StorageAccountVirtualClass):
@@ -26,7 +22,7 @@ class DataLake(StorageAccountVirtualClass):
                     else:
                         self.__service_client = DataLakeServiceClient(account_url=url, credential=credential)
                     
-                    containers = self.__service_client.list_file_systems()     
+                    containers = self.__service_client.list_file_systems()
                     con_num=len(list(containers))
                     dfs = False
                     if con_num > 0:     

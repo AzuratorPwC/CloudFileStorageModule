@@ -1,5 +1,4 @@
 import abc
-from atexit import register
 from io import BytesIO
 import pandas as pd
 import polars as pl
@@ -13,7 +12,6 @@ from itertools import product
 import polars as pl
 from ..Utils import *
 from ..Exceptions import *
-import logging
 import csv
 
 
@@ -378,7 +376,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         if isinstance(df, pd.DataFrame):
             if df.empty:
                 return -1
-            df = df.replace({r"_x([0-9a-fA-F]{4})_": ""}, regex=True)
+            #df = df.replace({r"_x([0-9a-fA-F]{4})_": ""}, regex=True)
             df = df.replace(regex='\r\n',value= ' ', ).replace(regex='\n',value= ' ')
             
             if replace_to_empty is not None:
@@ -394,7 +392,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 return -1
             df = df.with_columns(pl.col(pl.String).str.replace('\r\n', ' ',literal=False))
             df = df.with_columns(pl.col(pl.String).str.replace('\n', ' ',literal=False))
-            df = df.with_columns(pl.col(pl.String).str.replace(r"_x([0-9a-fA-F]{4})_", "",literal=False))
+            #df = df.with_columns(pl.col(pl.String).str.replace(r"_x([0-9a-fA-F]{4})_", "",literal=False))
 
             if replace_to_empty is not None:
                 for x in to_replace_list:
@@ -405,6 +403,13 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
+        elif isinstance(df, list) and isinstance(df[0],dict):
+            if engine == 'pandas':
+                df = pd.DataFrame.from_dict(df)
+            elif engine == 'polars':
+                df = pl.DataFrame(df)
+        else:
+            raise ValueError("Invalid DataFrame type")
         
         if partition_columns:
             partition_dict = {}
@@ -529,6 +534,13 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             #df = df.with_columns(pl.col(pl.Utf8).str.replace_all(r"\\n", ""))
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
+        elif isinstance(df, list) and isinstance(df[0],dict):
+            if engine == 'pandas':
+                df = pd.DataFrame.from_dict(df)
+            elif engine == 'polars':
+                df = pl.DataFrame(df)
+        else:
+            raise ValueError("Invalid DataFrame type")
                 
         if partition_columns:
             partition_dict = {}
@@ -570,8 +582,10 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
                 df_reset = df.reset_index(drop=True)
                 df_reset.to_parquet(buf,allow_truncated_timestamps=True, use_deprecated_int96_timestamps=True,compression=compression)
             else:
-                df_reset = df
+                #df_reset = df
                 df.write_parquet(buf,compression=compression)
+            
+            buf.flush()
             buf.seek(0)
             self.save_binary_file(buf.getvalue(),container_name ,directory_path,f"{uuid.uuid4().hex}.parquet",False)
     
@@ -609,6 +623,14 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             df = df.with_columns(pl.col(pl.Utf8).str.replace_all("\n", " "))
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
+        elif isinstance(df, list) and isinstance(df[0],dict):
+            if engine == 'pandas':
+                df = pd.DataFrame.from_dict(df)
+            elif engine == 'polars':
+                df = pl.DataFrame(df)
+        else:
+            raise ValueError("Invalid DataFrame type")
+                
         check_if_file_exist = False
 
         if isinstance(df,pd.DataFrame):
