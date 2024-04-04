@@ -69,10 +69,7 @@ class DataLake(StorageAccountVirtualClass):
         """
         
         for i in range(tries):
-            save_try = 10
-            start_sleep = 3
-            add_sleep = 2
-            temp_is_overwrite = is_overwrite
+            temp_is_overwrite = True
             try:
                 try:
                     file_system_client = self.__service_client.get_file_system_client(file_system=container_name)

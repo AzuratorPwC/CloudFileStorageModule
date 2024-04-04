@@ -183,7 +183,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     def read_csv_file(self, container_name:str, directory_path:str, file_name:str,
-                      engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8",
+                      engine:ENGINE_TYPES ='pandas', encoding:ENCODING_TYPES="UTF-8",
                       delimiter:str=',', is_first_row_as_header:bool=False,
                       skip_rows:int=0, skip_blank_lines=True,quoting:str=None, tech_columns:bool=False):
         """
@@ -221,7 +221,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             df =  add_tech_columns(df,container_name,directory_path.replace("\\","/"),file_name)
         return df
     
-    def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8", delimiter:str = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:str=None,tech_columns:bool=False,recursive:bool=False):
+    def read_csv_folder(self,container_name:str,directory_path:str,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES = "UTF-8", delimiter:str = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:str=None,tech_columns:bool=False,recursive:bool=False):
         """
         Reads multiple csv files from a folder and returns their content as a Pandas DataFrame.
 
@@ -265,7 +265,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
     
 
     
-    def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine: ENGINE_TYPES ='polars',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets=None,is_check_sheet_exist:bool=False,tech_columns:bool=False):
+    def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine:ENGINE_TYPES ='pandas',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets=None,is_check_sheet_exist:bool=False,tech_columns:bool=False):
         """
         Reads an excel file and returns its content as a Dictionary.
 
@@ -341,7 +341,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         return list_of_dff
     
     
-    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:str = ";",is_first_row_as_header:bool = True,quoting:str=None,escape:str=None, engine: ENGINE_TYPES ='polars',replace_to_empty="Default"):
+    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:str = ";",is_first_row_as_header:bool = True,quoting:str=None,escape:str=None, engine:ENGINE_TYPES ='pandas',replace_to_empty="Default"):
         """
         Saves a Pandas DataFrame as CSV format.
       
@@ -373,7 +373,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             to_replace_list = NAN_VALUES_REGEX
         elif isinstance(replace_to_empty, str):
             to_replace_list=list(replace_to_empty,)
-        elif isinstance(replace_to_empty, list):
+        elif isinstance(replace_to_empty, list) or isinstance(replace_to_empty, tuple):
             to_replace_list = replace_to_empty
         output_info["replace_to_empty"] = to_replace_list
         
@@ -524,7 +524,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             
         return output_info
     
-    def save_dataframe_as_parquet(self,df,container_name : str,directory_path:str,engine: ENGINE_TYPES ='polars',partition_columns:list=None,compression:COMPRESSION_TYPES=None):
+    def save_dataframe_as_parquet(self,df,container_name : str,directory_path:str,engine:ENGINE_TYPES ='pandas',partition_columns:list=None,compression:COMPRESSION_TYPES=None):
         """
         Saves a Pandas DataFrame as Parquet format.
 
@@ -558,10 +558,23 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
         else:
+            #output_info["type_input"] = "list_object"
+            
             if engine == 'pandas':
-                df = pd.DataFrame.from_dict(df)
+                try:
+                    #output_info["convert_to_str"] = False
+                    df = pd.DataFrame.from_dict(df)
+                except:
+                    #output_info["convert_to_str"] = True
+                    df = pd.DataFrame.from_dict(df,dtype='str')
             elif engine == 'polars':
-                df = pl.DataFrame(df)
+                try:
+                    #output_info["convert_to_str"] = False
+                    df = pl.from_dicts(df,infer_schema_length=300)
+                except:
+                    #output_info["convert_to_str"] = True
+                    schema  = {f"{k}":pl.String for k in df[0].keys()}
+                    df = pl.from_dicts(df,schema_overrides=schema)
                 
         if partition_columns:
             partition_dict = {}
@@ -601,17 +614,17 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
             buf = BytesIO()
             if isinstance(df, pd.DataFrame):
                 df_reset = df.reset_index(drop=True)
-                df_reset.to_parquet(buf,allow_truncated_timestamps=True, use_deprecated_int96_timestamps=True,compression=compression)
+                df_reset.to_parquet(buf,compression=compression)
             else:
                 #df_reset = df
                 df.write_parquet(buf,compression=compression)
             
-            buf.flush()
+            #buf.flush()
             buf.seek(0)
             self.save_binary_file(buf.getvalue(),container_name ,directory_path,f"{uuid.uuid4().hex}.parquet",False)
     
     
-    def save_dataframe_as_xlsx(self, df,container_name : str,directory_path:str ,file_name:str,sheet_name:str,engine:ENGINE_TYPES ='polars',index=False,header=False):
+    def save_dataframe_as_xlsx(self, df,container_name : str,directory_path:str ,file_name:str,sheet_name:str,engine:ENGINE_TYPES ='pandas',index=False,header=False):
         """
         Saves a list of Pandas DataFrames as separate sheets in an Excel file.
 
@@ -677,7 +690,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         #excel_buf.close()
         self.save_binary_file(excel_buf.getvalue(),container_name ,directory_path,file_name,True)
     
-    def read_parquet_file(self, container_name: str, directory_path: str,file_name:str,engine:ENGINE_TYPES ='polars', columns: list = None,tech_columns:bool=False):
+    def read_parquet_file(self, container_name: str, directory_path: str,file_name:str,engine:ENGINE_TYPES ='pandas', columns: list = None,tech_columns:bool=False):
 
         """
         Reads a Parquet file and returns its content as a Pandas DataFrame.
@@ -704,7 +717,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
 
         return df
     
-    def read_parquet_folder(self,container_name:str,directory_path:str,engine:ENGINE_TYPES ='polars',columns:list = None,tech_columns:bool=False,recursive:bool=False):
+    def read_parquet_folder(self,container_name:str,directory_path:str,engine:ENGINE_TYPES ='pandas',columns:list = None,tech_columns:bool=False,recursive:bool=False):
         """
         Reads multiple Parquet files from a folder and returns their content as a Pandas DataFrame.
 
@@ -889,7 +902,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
 
-    def save_json_file(self, df, container_name: str, directory_path: str, file_name:str = None, engine: ENGINE_TYPES ='polars', orient:ORIENT_TYPES= 'records'):
+    def save_json_file(self, df, container_name: str, directory_path: str, file_name:str = None, engine:ENGINE_TYPES ='pandas', orient:ORIENT_TYPES= 'records'):
         """
         Saves a Pandas or Polars DataFrame to a JSON file.
 
@@ -985,7 +998,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         return df
 
     def read_json_file(self, container_name:str, directory_path:str, file_name:str, orient: ORIENT_TYPES = 'records',
-                      engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8", quoting:str=None, tech_columns:bool=False):
+                      engine:ENGINE_TYPES ='pandas', encoding:ENCODING_TYPES="UTF-8", quoting:str=None, tech_columns:bool=False):
         """
         Read a JSON file from a container and return the data as a DataFrame.
 
@@ -1011,7 +1024,7 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         return df
     
     def read_json_folder(self,container_name:str,directory_path:str,orient: ORIENT_TYPES = 'records',
-                         engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8",quoting:str=None,tech_columns:bool=False,recursive:bool=False):
+                         engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES = "UTF-8",quoting:str=None,tech_columns:bool=False,recursive:bool=False):
         """Reads multiple json files from a folder and returns their content as a Pandas DataFrame.
 
         Args:

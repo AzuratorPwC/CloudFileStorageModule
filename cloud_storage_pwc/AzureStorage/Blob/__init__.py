@@ -178,7 +178,7 @@ class Blob(StorageAccountVirtualClass):
            | BlobAlreadyExists: File already exists.
            | NotAuthorizedToPerformThisOperation: If user is not authorized to perform this operation.
         """
-        temp_is_overwrite = is_overwrite
+        temp_is_overwrite = True
         for i in range(tries):
             try:
                 try:

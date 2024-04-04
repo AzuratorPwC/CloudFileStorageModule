@@ -3,17 +3,17 @@ from azure.storage.blob import BlobServiceClient
 import pytest
 import pandas as pd
 from cloud_storage_pwc import azure_storage
-pytest.blob_account = "devstrpwcpack"
-pytest.blob_account_key = "PsNSGXN0zIO8xTOHJe1d0ELmP08f0ktKzHgLxSHmQEPKjmwOzSPT7WdXmudbOyWeEuJBFfmeGopQ+AStfbaGYg=="
+pytest.blob_account = "strfunpbilandingdev"
+pytest.blob_account_key = "YoCndTiLJAGGmH/KsgwDTsm/Ly4ERapgCp6Q5Ftc4wQqpu8r92GaFutVMoHUuF36QSt2oapnPkeA+ASt8ZGe6A=="
 
         
 container_name = "csv1check"
         
-aa = azure_storage("strfunpbilanding",azure_credential="InteractiveBrowserCredential")
+aa = azure_storage(pytest.blob_account,access_key=pytest.blob_account_key)
 
 data=[{"col1":"art"},{"col1":"bart"},{"col1":"cart"},{"col1":"dart"},{"col1":"eart"}]
 
-aa.save_dataframe_as_parquet(data,"devv22",'aa',engine="pandas")
+aa.save_dataframe_as_xlsx(data,"devv22",'aa',file_name="mojplik.xlsx",sheet_name="Sjeeet1",header=True, engine="pandas")
 
 #aa.create_container("devv22")
 #aa.create_container('wolny','Public')
