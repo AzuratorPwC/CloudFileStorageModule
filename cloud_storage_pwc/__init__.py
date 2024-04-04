@@ -90,7 +90,6 @@ def azure_storage(accountname_or_url:str,access_key:str=None,tenant_id:str=None,
             except DataLakeCreateError:
                 create_object = Blob(f"https://{accountname_or_url}.blob.core.windows.net/",credential=credential)
             
-    logging.info(f"Created {create_object.__class__.__name__} object for interacting with Azure Storage.")
     return create_object
     
 if __name__ == '__main__':
