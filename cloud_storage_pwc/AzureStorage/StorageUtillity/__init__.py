@@ -15,8 +15,7 @@ from ..Exceptions import *
 import csv
 
 
-
-class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
+class StorageUtillity(metaclass=abc.ABCMeta):
 
     @classmethod
     def __subclasshook__(cls, subclass):
@@ -55,14 +54,14 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Reads a csv bytes and returns its content as a Pandas DataFrame.
 
         Args:
-           | input_bytes (bytes): The binary data to be read.
-           | engine (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars'). Defaults to 'pandas'.
-           | encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults to “UTF-8”.
-           | delimiter (str, optional): The delimiter used in the CSV file.Defaults to ‘,’.
-           | is_first_row_as_header (bool, optional): Flag indicating whether the first row is a header. Defaults to False.
-           | skip_rows (int, optional): Number of rows to skip from the beginning of the file. Defaults to 0.
-           | skip_blank_lines (bool, optional): Flag indicating whether to skip blank lines. Defaults to True.
-           | quoting (str, optional): Determines the quoting behavior for text fields when writing data to a CSV file. Defaults to None.
+           | **input_bytes** (bytes): The binary data to be read.
+           | **engine** (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars'). Defaults to 'pandas'.
+           | **encoding** (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults to “UTF-8”.
+           | **delimiter** (str, optional): The delimiter used in the CSV file.Defaults to ‘,’.
+           | **is_first_row_as_header** (bool, optional): Flag indicating whether the first row is a header. Defaults to False.
+           | **skip_rows** (int, optional): Number of rows to skip from the beginning of the file. Defaults to 0.
+           | **skip_blank_lines** (bool, optional): Flag indicating whether to skip blank lines. Defaults to True.
+           | **quoting** (str, optional): Determines the quoting behavior for text fields when writing data to a CSV file. Defaults to None.
 
         Returns:
            | pd.DataFrame: A Pandas DataFrame containing the content of the csv bytes.
@@ -96,9 +95,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Reads a Parquet bytes and returns its content as a Pandas DataFrame.
 
         Args:
-           | input_bytes (bytes): The binary data to be read.
-           | engine (ENGINE_TYPES, optional):  The processing engine to use ('pandas' or 'polars'). Defaults to 'pandas'.
-           | columns (list, optional): A list of column names to be read from the binary data. Defaults to None.
+           | **input_bytes** (bytes): The binary data to be read.
+           | **engine** (ENGINE_TYPES, optional):  The processing engine to use ('pandas' or 'polars'). Defaults to 'pandas'.
+           | **columns** (list, optional): A list of column names to be read from the binary data. Defaults to None.
 
         Returns:
            | pd.DataFrame: A Pandas DataFrame containing the content of the Parquet bytes.
@@ -117,8 +116,8 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Creates a container.
 
         Args:
-            container_name (str): The name of the container to create. 
-            public_access (CONTAINER_ACCESS_TYPES, optional): The level of public access for the container. Defaults to 'Private'.
+            **container_name** (str): The name of the container to create. 
+            **public_access** (CONTAINER_ACCESS_TYPES, optional): The level of public access for the container. Defaults to 'Private'.
 
         Raises:
             NotImplementedError: _description_
@@ -149,12 +148,12 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
        | Save a binary file to the specified container.
 
         Args:
-           | inputbytes (bytes): The binary data to be saved.
-           | container_name (str): The name of the container.
-           | directory_path (str): The directory path within the container to save the file.
-           | file_name (str): The name of the file to be saved.
-           | encoding (ENCODING_TYPES, optional): The encoding type of the input data. Defaults to "UTF-8".
-           | is_overwrite (bool, optional): Flag indicating whether to overwrite the file if italready exists. Defaults to True.
+           | **inputbytes** (bytes): The binary data to be saved.
+           | **container_name** (str): The name of the container.
+           | **directory_path** (str): The directory path within the container to save the file.
+           | **file_name** (str): The name of the file to be saved.
+           | **encoding** (ENCODING_TYPES, optional): The encoding type of the input data. Defaults to "UTF-8".
+           | **is_overwrite** (bool, optional): Flag indicating whether to overwrite the file if italready exists. Defaults to True.
 
         Returns:
            | None
@@ -170,9 +169,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
        | Reads a binary file from the specified container, directory, and file name.
 
         Args:
-           | container_name (str): The name of the container.
-           | directory_path (str): The path to the directory where the file is located.
-           | file_name (str): The name of the file.
+           | **container_name** (str): The name of the container.
+           | **directory_path** (str): The path to the directory where the file is located.
+           | **file_name** (str): The name of the file.
 
         Returns:
            | None
@@ -190,22 +189,22 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Read a CSV file from the container and return the data as a DataFrame.
 
         Args:
-           | container_name (str): The name of the container.
-           | directory_path (str): The path within the container where the CSV file is located.
-           | sourcefile_name (str): The name of the CSV file to be read.
-           | engine (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars').
+           | **container_name** (str): The name of the container.
+           | **directory_path** (str): The path within the container where the CSV file is located.
+           | **sourcefile_name** (str): The name of the CSV file to be read.
+           | **engine** (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars').
                 Defaults to 'polars'.
-           | encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
+           | **encoding** (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
                 to "UTF-8".
-            delimiter (str, optional): The delimiter used in the CSV file.
+           | **delimiter** (str, optional): The delimiter used in the CSV file.
                 Defaults to ','.
-            is_first_row_as_header (bool, optional): Flag indicating whether the first row is
+           | **is_first_row_as_header** (bool, optional): Flag indicating whether the first row is
                 a header. Defaults to False.
-           | skip_rows (int, optional): Number of rows to skip from the beginning of the file.
+           | **skip_rows** (int, optional): Number of rows to skip from the beginning of the file.
                 Defaults to 0.
-           | skip_blank_lines (bool, optional): Flag indicating whether to skip blank lines. Defaults
+           | **skip_blank_lines** (bool, optional): Flag indicating whether to skip blank lines. Defaults
                 to True.
-           | tech_columns (bool, optional): Flag indicating whether to add technical columns (e.g.,
+           | **tech_columns** (bool, optional): Flag indicating whether to add technical columns (e.g.,
                 file path and name). Defaults to False.
 
         Returns:
@@ -226,17 +225,17 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Reads multiple csv files from a folder and returns their content as a Pandas DataFrame.
 
         Args:
-           | container_name (str): The name of the container containing the csv files.
-           | directory_path (str): The path of the directory containing the csv files.
-           | engine (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to ‘polars’.
-           | encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults to “UTF-8”.
-           | delimiter (str, optional): The delimiter used in the CSV file.Defaults to ‘,’.
-           | is_first_row_as_header (bool, optional): Flag indicating whether the first row is a header. Defaults to False.
-           | skip_rows (int, optional): Number of rows to skip from the beginning of the files. Defaults to 0.
-           | skip_blank_lines (bool, optional): Flag indicating whether to skip blank lines. Defaults to True.
-           | quoting (str, optional): Determines the quoting behavior for text fields when reading data from CSV files. Defaults to None.
-           | tech_columns (bool, optional): Flag indicating whether to add technical columns (e.g., file path and name). Defaults to False.
-           | recursive (bool, optional): If True, includes files from subdirectories. Defaults to False.
+           | **container_name** (str): The name of the container containing the csv files.
+           | **directory_path** (str): The path of the directory containing the csv files.
+           | **engine** (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to ‘polars’.
+           | **encoding** (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults to “UTF-8”.
+           | **delimiter** (str, optional): The delimiter used in the CSV file.Defaults to ‘,’.
+           | **is_first_row_as_header** (bool, optional): Flag indicating whether the first row is a header. Defaults to False.
+           | **skip_rows** (int, optional): Number of rows to skip from the beginning of the files. Defaults to 0.
+           | **skip_blank_lines** (bool, optional): Flag indicating whether to skip blank lines. Defaults to True.
+           | **quoting** (str, optional): Determines the quoting behavior for text fields when reading data from CSV files. Defaults to None.
+           | **tech_columns** (bool, optional): Flag indicating whether to add technical columns (e.g., file path and name). Defaults to False.
+           | **recursive** (bool, optional): If True, includes files from subdirectories. Defaults to False.
 
         Raises:
            | FolderDataNotFound: If the specified folder does not exist.
@@ -270,15 +269,15 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Reads an excel file and returns its content as a Dictionary.
 
         Args:
-           | container_name (str): The name of the container containing the excel file.
-           | directory_path (str): The path of the directory containing the excel file.
-           | file_name (str): The name of the file to be read.
-           | engine (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to ‘polars’.
-           | skip_rows (int, optional): Number of rows to skip from the beginning of the file. Defaults to 0.
-           | is_first_row_as_header (bool, optional): Flag indicating whether the first row is a header. Defaults to False.
-           | sheets (_type_, optional): _description_. Defaults to None.
-           | is_check_sheet_exist (bool, optional): _description_. Defaults to False.
-           | tech_columns (bool, optional): Flag indicating whether to add technical columns (e.g., file path and name). Defaults to False.
+           | **container_name** (str): The name of the container containing the excel file.
+           | **directory_path** (str): The path of the directory containing the excel file.
+           | **file_name** (str): The name of the file to be read.
+           | **engine** (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to ‘polars’.
+           | **skip_rows** (int, optional): Number of rows to skip from the beginning of the file. Defaults to 0.
+           | **is_first_row_as_header** (bool, optional): Flag indicating whether the first row is a header. Defaults to False.
+           | **sheets** (_type_, optional): _description_. Defaults to None.
+           | **is_check_sheet_exist** (bool, optional): _description_. Defaults to False.
+           | **tech_columns** (bool, optional): Flag indicating whether to add technical columns (e.g., file path and name). Defaults to False.
 
         Raises:
            | ExcelSheetNotFound: _description_
@@ -346,18 +345,18 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Saves a Pandas DataFrame as CSV format.
       
         Args:
-           | df (Pandas DataFrame): The DataFrame to be saved.
-           | container_name (str): The name of the container.
-           | directory_path (str): The path of the directory within the container.
-           | file_name (str, optional): The name of the file to be created. Defaults to None.
-           | partition_columns (list, optional): A list of columns to be used for partitioning the data. Defaults to None.
-           | encoding (ENCODING_TYPES, optional): The encoding type of the input data. Defaults to "UTF-8".
-           | delimiter (str, optional): The delimiter used in the CSV file.Defaults to ';'.
-           | is_first_row_as_header (bool, optional): Flag indicating whether the first row is a header. Defaults to False.  
-           | quoting (str, optional): Determines the quoting behavior for text fields when writing dataframe to a CSV file.
-           | escape (str, optional): Character used to escape sep and quotechar when appropriate. Defaults to None.
-           | engine (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'polars'.
-           | replace_to_empty (str, optional): Determine the values that should be replaced with an empty string in the DataFrame before saving it as a CSV file. Defaults to "Default".
+           | **df** (Pandas DataFrame): The DataFrame to be saved.
+           | **container_name** (str): The name of the container.
+           | **directory_path** (str): The path of the directory within the container.
+           | **file_name** (str, optional): The name of the file to be created. Defaults to None.
+           | **partition_columns** (list, optional): A list of columns to be used for partitioning the data. Defaults to None.
+           | **encoding** (ENCODING_TYPES, optional): The encoding type of the input data. Defaults to "UTF-8".
+           | **delimiter** (str, optional): The delimiter used in the CSV file.Defaults to ';'.
+           | **is_first_row_as_header** (bool, optional): Flag indicating whether the first row is a header. Defaults to False.  
+           | **quoting** (str, optional): Determines the quoting behavior for text fields when writing dataframe to a CSV file.
+           | **escape** (str, optional): Character used to escape sep and quotechar when appropriate. Defaults to None.
+           | **engine** (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'polars'.
+           | **replace_to_empty** (str, optional): Determine the values that should be replaced with an empty string in the DataFrame before saving it as a CSV file. Defaults to "Default".
 
         Returns:
            | None 
@@ -529,11 +528,11 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Saves a Pandas DataFrame as Parquet format.
 
         Args:
-           | df (pd.DataFrame): The DataFrame to be saved.
-           | container_name (str): The name of the container.
-           | directory_path (str): The path of the directory within the container.
-           | partition_columns (list, optional): A list of columns to be used for partitioning the data. Defaults to None.
-           | compression (str, optional): The compression method for the Parquet file ('snappy', 'gzip', 'brotli', None). Defaults to None.
+           | **df** (pd.DataFrame): The DataFrame to be saved.
+           | **container_name** (str): The name of the container.
+           | **directory_path** (str): The path of the directory within the container.
+           | **partition_columns** (list, optional): A list of columns to be used for partitioning the data. Defaults to None.
+           | **compression** (str, optional): The compression method for the Parquet file ('snappy', 'gzip', 'brotli', None). Defaults to None.
 
         Returns:
            | None
@@ -629,13 +628,13 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Saves a list of Pandas DataFrames as separate sheets in an Excel file.
 
         Args:
-           | list_df (list): A list of Pandas DataFrames to be saved as sheets.
-           | sheets (list): A list of sheet names corresponding to the DataFrames.
-           | container_name (str): The name of the container.
-           | directory_path (str): The path of the directory within the container.
-           | file_name (str): The name of the Excel file.
-           | index (bool, optional): If True, includes the DataFrame index in the Excel file. Defaults to False.
-           | header (bool, optional): If True, includes the DataFrame column names in the Excel file. Defaults to False.
+           | **list_df** (list): A list of Pandas DataFrames to be saved as sheets.
+           | **sheets** (list): A list of sheet names corresponding to the DataFrames.
+           | **container_name** (str): The name of the container.
+           | **directory_path** (str): The path of the directory within the container.
+           | **file_name** (str): The name of the Excel file.
+           | **index** (bool, optional): If True, includes the DataFrame index in the Excel file. Defaults to False.
+           | **header** (bool, optional): If True, includes the DataFrame column names in the Excel file. Defaults to False.
 
         Returns:
            | None
@@ -696,11 +695,11 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Reads a Parquet file and returns its content as a Pandas DataFrame.
 
         Args:
-           | container_name (str): The name of the container containing the Parquet file.
-           | directory_path (str): The path of the directory containing the Parquet file.
-           | sourcefile_name (str): The name of the Parquet file to be read.
-           | columns (list, optional): A list of column names to be read from the Parquet file. Defaults to None.
-           | tech_columns (bool, optional): If True, adds technical columns to the DataFrame. Defaults to False.
+           | **container_name** (str): The name of the container containing the Parquet file.
+           | **directory_path** (str): The path of the directory containing the Parquet file.
+           | **sourcefile_name** (str): The name of the Parquet file to be read.
+           | **columns** (list, optional): A list of column names to be read from the Parquet file. Defaults to None.
+           | **tech_columns** (bool, optional): If True, adds technical columns to the DataFrame. Defaults to False.
 
         Returns:
            | pd.DataFrame: A Pandas DataFrame containing the content of the Parquet file.
@@ -722,12 +721,12 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Reads multiple Parquet files from a folder and returns their content as a Pandas DataFrame.
 
         Args:
-           | container_name (str): The name of the container containing the Parquet files.
-           | directory_path (str): The path of the directory containing the Parquet files.
-           | folders (list, optional): A list of folder names to filter the files. Defaults to None.
-           | columns (list, optional): A list of column names to be read from the Parquet files. Defaults to None.
-           | tech_columns (bool, optional): If True, adds technical columns to the DataFrame. Defaults to False.
-           | recursive (bool, optional): If True, includes files from subdirectories. Defaults to False.
+           | **container_name** (str): The name of the container containing the Parquet files.
+           | **directory_path** (str): The path of the directory containing the Parquet files.
+           | **folders** (list, optional): A list of folder names to filter the files. Defaults to None.
+           | **columns** (list, optional): A list of column names to be read from the Parquet files. Defaults to None.
+           | **tech_columns** (bool, optional): If True, adds technical columns to the DataFrame. Defaults to False.
+           | **recursive** (bool, optional): If True, includes files from subdirectories. Defaults to False.
 
         Returns:
            | pd.DataFrame: A Pandas DataFrame containing the content of the Parquet files.
@@ -760,10 +759,10 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
        | Deletes a file.
 
         Args:
-           | container_name (str): The name of the container containing the file.
-           | directory_path (str): The path of the directory containing the file.
-           | file_name (str): The name of the file to be deleted.
-           | wait (bool, optional): If True, waits for the deletion to complete before returning. Defaults to True.
+           | **container_name** (str): The name of the container containing the file.
+           | **directory_path** (str): The path of the directory containing the file.
+           | **file_name** (str): The name of the file to be deleted.
+           | **wait** (bool, optional): If True, waits for the deletion to complete before returning. Defaults to True.
 
         Returns:
            | None
@@ -785,9 +784,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
        | Deletes a folder and its contents.
 
         Args:
-           | container_name (str): The name of the container containing the folder.
-           | directory_path (str): The path of the folder to be deleted.
-           | wait (bool, optional): If True, waits for the deletion to complete before returning. Defaults to True.
+           | **container_name** (str): The name of the container containing the folder.
+           | **directory_path** (str): The path of the folder to be deleted.
+           | **wait** (bool, optional): If True, waits for the deletion to complete before returning. Defaults to True.
 
         Returns:
            | None
@@ -804,13 +803,13 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
        | Moves a file from one location to another.
 
         Args:
-           | container_name (str): The name of the container containing the source file.
-           | directory_path (str): The path of the directory containing the source file.
-           | file_name (str): The name of the source file to be moved.
-           | new_container_name (str): The name of the container where the file will be moved.
-           | new_directory_path (str): The path of the directory where the file will be moved.
-           | is_overwrite (bool, optional): If True, overwrites the destination file if it already exists. Defaults to True.
-           | is_delete_source_file (bool, optional): If True, deletes the source file after moving. Defaults to False.
+           | **container_name** (str): The name of the container containing the source file.
+           | **directory_path** (str): The path of the directory containing the source file.
+           | **file_name** (str): The name of the source file to be moved.
+           | **new_container_name** (str): The name of the container where the file will be moved.
+           | **new_directory_path** (str): The path of the directory where the file will be moved.
+           | **is_overwrite** (bool, optional): If True, overwrites the destination file if it already exists. Defaults to True.
+           | **is_delete_source_file** (bool, optional): If True, deletes the source file after moving. Defaults to False.
 
         Returns:
            | None
@@ -827,12 +826,12 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
        | Moves all files from one folder to another.
 
         Args:
-           | container_name (str): The name of the container containing the source folder.
-           | directory_path (str): The path of the source folder.
-           | new_container_name (str): The name of the container where the folder will be moved.
-           | new_directory_path (str): The path of the target directory where the folder will be moved.
-           | is_overwrite (bool, optional): If True, overwrites destination files if they already exist. Defaults to True.
-           | is_delete_source_folder (bool, optional): If True, deletes the source folder after moving. Defaults to False.
+           | **container_name** (str): The name of the container containing the source folder.
+           | **directory_path** (str): The path of the source folder.
+           | **new_container_name** (str): The name of the container where the folder will be moved.
+           | **new_directory_path** (str): The path of the target directory where the folder will be moved.
+           | **is_overwrite** (bool, optional): If True, overwrites destination files if they already exist. Defaults to True.
+           | **is_delete_source_folder** (bool, optional): If True, deletes the source folder after moving. Defaults to False.
 
         Returns:
            | bool: True if the folder move operation is successful.
@@ -849,10 +848,10 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         | Renames a file within a specified container.
 
         Args:
-           | container_name (str): The name of the container containing the file.
-           | directory_path (str): The path of the directory containing the file.
-           | file_name (str): The name of the file to be renamed.
-           | new_file_name (str): The new name for the renamed file.
+           | **container_name** (str): The name of the container containing the file.
+           | **directory_path** (str): The path of the directory containing the file.
+           | **file_name** (str): The name of the file to be renamed.
+           | **new_file_name** (str): The new name for the renamed file.
 
         Returns:
            | None
@@ -869,9 +868,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         | Renames a folder within a specified container.
 
         Args:
-           | container_name (str): The name of the container containing the folder.
-           | directory_path (str): The path of the folder to be renamed.
-           | new_directory_path (str): The new path for the renamed folder.
+           | **container_name** (str): The name of the container containing the folder.
+           | **directory_path** (str): The path of the folder to be renamed.
+           | **new_directory_path** (str): The new path for the renamed folder.
 
         Returns:
            | None
@@ -888,9 +887,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
        | Creates an empty file within a specified container.
 
         Args:
-           | container_name (str): The name of the container where the file will be created.
-           | directory_path (str): The directory path within the container. Use an empty string for the root directory.
-           | file_name (str): The name of the file to be created.
+           | **container_name** (str): The name of the container where the file will be created.
+           | **directory_path** (str): The directory path within the container. Use an empty string for the root directory.
+           | **file_name** (str): The name of the file to be created.
 
         Returns:
            | None
@@ -907,12 +906,12 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Saves a Pandas or Polars DataFrame to a JSON file.
 
         Args:
-           | df ([pd.DataFrame, pl.DataFrame]): The DataFrame to be saved.
-           | container_name (str): The name of the container.
-           | directory (str): The path of the directory within the container.
-           | file (str, optional): The name of the JSON file. If not provided, a random name will be generated. Defaults to None.
-           | engine (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'polars'.
-           | orient (ORIENT_TYPES, optional): The JSON orientation type ('records', 'split', 'index', 'columns', or 'values'). Defaults to 'records'.
+           | **df** ([pd.DataFrame, pl.DataFrame]): The DataFrame to be saved.
+           | **container_name** (str): The name of the container.
+           | **directory** (str): The path of the directory within the container.
+           | **file** (str, optional): The name of the JSON file. If not provided, a random name will be generated. Defaults to None.
+           | **engine** (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'polars'.
+           | **orient** (ORIENT_TYPES, optional): The JSON orientation type ('records', 'split', 'index', 'columns', or 'values'). Defaults to 'records'.
 
         Returns:
            | None
@@ -957,9 +956,9 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
        | List files under a specified path.
 
         Args:
-           | container_name (str): The name of the container.
-           | directory_path (str): The path within the container to list files from.
-           | recursive (bool, optional): Flag indicating whether to list files recursively. Defaults to False.
+           | **container_name** (str): The name of the container.
+           | **directory_path** (str): The path within the container to list files from.
+           | **recursive** (bool, optional): Flag indicating whether to list files recursively. Defaults to False.
 
         Returns:
            | list: A list of file paths relative to the specified directory.
@@ -974,11 +973,11 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         """Reads a json bytes and returns its content as a Pandas DataFrame.
 
         Args:
-           | input_bytes (bytes): The binary data to be read.
-           | orient (ORIENT_TYPES, optional):  The JSON orientation type ('records', 'split', 'index', 'columns', or 'values'). Defaults to 'records'.
-           | engine (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to 'pandas'.
-           | encoding (ENCODING_TYPES, optional):  The encoding type of the json file. Defaults to "UTF-8".
-           | quoting (str, optional): Determines the quoting behavior for text fields when writing data to a json file. Defaults to None.
+           | **input_bytes** (bytes): The binary data to be read.
+           | **orient** (ORIENT_TYPES, optional):  The JSON orientation type ('records', 'split', 'index', 'columns', or 'values'). Defaults to 'records'.
+           | **engine** (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to 'pandas'.
+           | **encoding** (ENCODING_TYPES, optional):  The encoding type of the json file. Defaults to "UTF-8".
+           | **quoting** (str, optional): Determines the quoting behavior for text fields when writing data to a json file. Defaults to None.
 
         Returns:
             pd.DataFrame: A Pandas DataFrame containing the content of the json file.
@@ -1003,14 +1002,14 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         Read a JSON file from a container and return the data as a DataFrame.
 
         Args:
-           | container_name (str): The name of the container.
-           | directory_path (str): The path within the container where the CSV file is located.
-           | sourcefile_name (str): The name of the CSV file to be read.
-           | engine (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars').
+           | **container_name** (str): The name of the container.
+           | **directory_path** (str): The path within the container where the CSV file is located.
+           | **sourcefile_name** (str): The name of the CSV file to be read.
+           | **engine** (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars').
                 Defaults to 'polars'.
-           | encoding (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
+           | **encoding** (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
                 to "UTF-8".
-           | tech_columns (bool, optional): Flag indicating whether to add technical columns (e.g.,
+           | **tech_columns** (bool, optional): Flag indicating whether to add technical columns (e.g.,
                 file path and name). Defaults to False.
 
         Returns:
@@ -1028,14 +1027,14 @@ class StorageAccountVirtualClass(metaclass=abc.ABCMeta):
         """Reads multiple json files from a folder and returns their content as a Pandas DataFrame.
 
         Args:
-           | container_name (str): The name of the container containing the json fils.
-           | directory_path (str): The path of the directory containing the json files.
-           | orient (ORIENT_TYPES, optional):  The JSON orientation type ('records', 'split', 'index', 'columns', or 'values'). Defaults to 'records'.
-           | engine (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to 'polars'.
-           | encoding (ENCODING_TYPES, optional): The encoding type of the json files. Defaults to "UTF-8".
-           | quoting (str, optional): Determines the quoting behavior for text fields when reading data from a json files. Defaults to None.
-           | tech_columns (bool, optional): Flag indicating whether to add technical columns. Defaults to False.
-           | recursive (bool, optional): If True, includes files from subdirectories. Defaults to False.
+           | **container_name** (str): The name of the container containing the json fils.
+           | **directory_path** (str): The path of the directory containing the json files.
+           | **orient** (ORIENT_TYPES, optional):  The JSON orientation type ('records', 'split', 'index', 'columns', or 'values'). Defaults to 'records'.
+           | **engine** (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to 'polars'.
+           | **encoding** (ENCODING_TYPES, optional): The encoding type of the json files. Defaults to "UTF-8".
+           | **quoting** (str, optional): Determines the quoting behavior for text fields when reading data from a json files. Defaults to None.
+           | **tech_columns** (bool, optional): Flag indicating whether to add technical columns. Defaults to False.
+           | **recursive** (bool, optional): If True, includes files from subdirectories. Defaults to False.
 
         Returns:
             pd.DataFrame: A Pandas DataFrame containing the content of the folder.

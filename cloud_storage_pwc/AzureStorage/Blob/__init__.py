@@ -3,10 +3,10 @@ import time
 from azure.storage.blob import BlobServiceClient
 from azure.core.exceptions import HttpResponseError,ResourceNotFoundError,ResourceExistsError
 from ..Exceptions import *
-from ..StorageAccountVirtualClass import StorageAccountVirtualClass
+from ..StorageUtillity import StorageUtillity
 from ..Utils import *
 
-class Blob(StorageAccountVirtualClass):
+class Blob(StorageUtillity):
     """Class representing Azure Blob Storage"""
     def __init__(self, url:str, access_key:str=None,credential=None):
         super().__init__()
@@ -43,9 +43,9 @@ class Blob(StorageAccountVirtualClass):
         List files under a specified path within the Azure Blob Storage container.
 
         Args:
-           | container_name (str): The name of the Azure Blob Storage container.
-           | directory_path (str): The path within the container to list files from.
-           | recursive (bool, optional): Flag indicating whether to list files recursively. Defaults to False.
+           | **container_name** (str): The name of the Azure Blob Storage container.
+           | **directory_path** (str): The path within the container to list files from.
+           | **recursive** (bool, optional): Flag indicating whether to list files recursively. Defaults to False.
 
         Returns:
             list: A list of file paths relative to the specified directory.
@@ -77,9 +77,9 @@ class Blob(StorageAccountVirtualClass):
         Checks whether the file exists in the Azure Blob Storage.
 
         Args:
-           | container_name (str):  The name of the container.
-           | directory_path (str): The path of the directory where the file is located.
-           | file_name (str): The name of the file to bo located.
+           | **container_name** (str):  The name of the container.
+           | **directory_path** (str): The path of the directory where the file is located.
+           | **file_name** (str): The name of the file to bo located.
 
         Returns:
             bool: The information about whether the file exists (True/False). 
@@ -107,8 +107,8 @@ class Blob(StorageAccountVirtualClass):
         Checks whether the folder exists in the Azure Blob Storage.
 
         Args:
-           | container_name (str):  The name of the container.
-           | directory_path (str): The path of the directory where the folder is located.
+           | **container_name** (str):  The name of the container.
+           | **directory_path** (str): The path of the directory where the folder is located.
 
         Returns:
             bool: The information about whether the folder exists (True/False). 
@@ -128,9 +128,9 @@ class Blob(StorageAccountVirtualClass):
         Reads a binary file from the specified container and directory.
 
         Args:
-           | container_name (str): The name of the container.
-           | directory_path (str): The path of the directory where the file is located.
-           | file_name (str): The name of the file to be read.
+           | **container_name** (str): The name of the container.
+           | **directory_path** (str): The path of the directory where the file is located.
+           | **file_name** (str): The name of the file to be read.
 
         Returns:
             bytes: The content of the binary file.
@@ -164,11 +164,11 @@ class Blob(StorageAccountVirtualClass):
         Save a binary file to the specified container in the Azure Blob Storage.
 
         Args:
-           | input_bytes (bytes): Bytes to be saved.
-           | container_name (str): The name of the container.
-           | directory_path (str): The path of the directory where the file is located.
-           | file_name (str): The name of the file to be saved.
-           | is_overwrite (bool, optional): Should the file be overwritten? Defaults to True.
+           | **input_bytes** (bytes): Bytes to be saved.
+           | **container_name** (str): The name of the container.
+           | **directory_path** (str): The path of the directory where the file is located.
+           | **file_name** (str): The name of the file to be saved.
+           | **is_overwrite** (bool, optional): Should the file be overwritten? Defaults to True.
         
         Returns:
             None
@@ -221,10 +221,10 @@ class Blob(StorageAccountVirtualClass):
         Deletes a file from the Azure Blob Storage.
 
         Args:
-           | container_name (str): The name of the container where the file to be deleted is located.
-           | directory_path (str): The directory path within the container. Use an empty string for the root directory.
-           | file_name (str): The name of the file to be deleted.
-           | wait (bool, optional): The variable controls whether the code should pause briefly before checking the existence of a file in the container. Defaults to True.
+           | **container_name** (str): The name of the container where the file to be deleted is located.
+           | **directory_path** (str): The directory path within the container. Use an empty string for the root directory.
+           | **file_name** (str): The name of the file to be deleted.
+           | **wait** (bool, optional): The variable controls whether the code should pause briefly before checking the existence of a file in the container. Defaults to True.
 
         Returns:
             None
@@ -264,11 +264,11 @@ class Blob(StorageAccountVirtualClass):
         Deletes files from the Azure Blob Storage based on a prefix.
 
         Args:
-           | container_name (str): The name of the container where the files to be deleted are located.
-           | directory_path (str): The directory path within the container. Use an empty string for the root directory.
-           | file_prefix (str): The prefix of files to be deleted.
-           | recursive (bool, optional): Flag indicating whether to list files recursively. Defaults to False.
-           | wait (bool, optional): The variable controls whether the code should pause briefly before checking the existence of a file in the container. Defaults to True.
+           | **container_name** (str): The name of the container where the files to be deleted are located.
+           | **directory_path** (str): The directory path within the container. Use an empty string for the root directory.
+           | **file_prefix** (str): The prefix of files to be deleted.
+           | **recursive** (bool, optional): Flag indicating whether to list files recursively. Defaults to False.
+           | **wait** (bool, optional): The variable controls whether the code should pause briefly before checking the existence of a file in the container. Defaults to True.
 
         Returns:
             None
@@ -300,9 +300,9 @@ class Blob(StorageAccountVirtualClass):
         Deletes a folder and its contents from the Azure Blob Storage.
 
         Args:
-           | container_name (str): The name of the container where the folder to be deleted is located.
-           | directory_path (str): The directory path to the folder within the container.
-           | wait (bool, optional): The variable controls whether the code should pause briefly before checking the existence of a file in the container. Defaults to True.
+           | **container_name** (str): The name of the container where the folder to be deleted is located.
+           | **directory_path** (str): The directory path to the folder within the container.
+           | **wait** (bool, optional): The variable controls whether the code should pause briefly before checking the existence of a file in the container. Defaults to True.
 
         Returns:
             None
@@ -329,13 +329,13 @@ class Blob(StorageAccountVirtualClass):
         Moves a file from one location to another within the Azure Blob Storage.
 
         Args:
-           | container_name (str): The name of the container where the file to be moved is located.
-           | directory_path (str): The directory path within the container. Use an empty string for the root directory.
-           | file_name (str): The name of the file to be moved.
-           | new_container_name (str): The name of the container where the file to be moved should be located.
-           | new_directory_path (str):  The directory path within the container where the file to be moved should be located.
-           | is_overwrite (bool, optional): Should the file be overwritten? Defaults to True.
-           | is_delete_source_file (bool, optional): Should the source file be deleted?. Defaults to False.
+           | **container_name** (str): The name of the container where the file to be moved is located.
+           | **directory_path** (str): The directory path within the container. Use an empty string for the root directory.
+           | **file_name** (str): The name of the file to be moved.
+           | **new_container_name** (str): The name of the container where the file to be moved should be located.
+           | **new_directory_path** (str):  The directory path within the container where the file to be moved should be located.
+           | **is_overwrite** (bool, optional): Should the file be overwritten? Defaults to True.
+           | **is_delete_source_file** (bool, optional): Should the source file be deleted?. Defaults to False.
         
         Returns:
             None
@@ -354,12 +354,12 @@ class Blob(StorageAccountVirtualClass):
         Moves all files from one folder to another within the Azure Blob Storage.
 
         Args:
-           | container_name (str): The name of the container where the folder to be moved is located.
-           | directory_path (str): The directory path within the container. Use an empty string for the root directory.
-           | new_container_name (str): The name of the container where the folder to be moved should be located.
-           | new_directory_path (str):  The directory path within the container where the folder to be moved should be located.
-           | is_overwrite (bool, optional): Should the folder be overwritten? Defaults to True.
-           | is_delete_source_folder (bool, optional): Should the source folder be deleted? Defaults to False.
+           | **container_name** (str): The name of the container where the folder to be moved is located.
+           | **directory_path** (str): The directory path within the container. Use an empty string for the root directory.
+           | **new_container_name** (str): The name of the container where the folder to be moved should be located.
+           | **new_directory_path** (str):  The directory path within the container where the folder to be moved should be located.
+           | **is_overwrite** (bool, optional): Should the folder be overwritten? Defaults to True.
+           | **is_delete_source_folder** (bool, optional): Should the source folder be deleted? Defaults to False.
 
         Returns:
             None
@@ -379,10 +379,10 @@ class Blob(StorageAccountVirtualClass):
         Renames a file within a specified container in the Azure Blob Storage.
 
         Args:
-           | container_name (str): The name of the container where the file to be renamed is located.
-           | directory_path (str): The directory path within the container.
-           | file_name (str): The name of the file to be changed.
-           | newfile_name (str): New file name.
+           | **container_name** (str): The name of the container where the file to be renamed is located.
+           | **directory_path** (str): The directory path within the container.
+           | **file_name** (str): The name of the file to be changed.
+           | **newfile_name** (str): New file name.
 
         Returns:
             None
@@ -398,9 +398,9 @@ class Blob(StorageAccountVirtualClass):
         Renames a folder within a specified container in the Azure Blob Storage.
 
         Args:
-           | container_name (str): The name of the container where the folder to be renamed is located.
-           | directory_path (str): The directory path within the container.
-           | new_directory_path (str): New directory path within the container.
+           | **container_name** (str): The name of the container where the folder to be renamed is located.
+           | **directory_path** (str): The directory path within the container.
+           | **new_directory_path** (str): New directory path within the container.
 
         Returns:
             None
@@ -417,9 +417,9 @@ class Blob(StorageAccountVirtualClass):
         Creates an empty file within a specified container in the Azure Blob Storage.
 
         Args:
-           | container_name (str): The name of the container where the file will be created. 
-           | directory_path (str): The directory path within the container. Use an empty string for the root directory. 
-           | file_name (str): The name of the file to be created.
+           | **container_name** (str): The name of the container where the file will be created. 
+           | **directory_path** (str): The directory path within the container. Use an empty string for the root directory. 
+           | **file_name** (str): The name of the file to be created.
 
         Returns:
             None
@@ -434,8 +434,8 @@ class Blob(StorageAccountVirtualClass):
         Creates a container in the Azure Blob Storage.
 
         Args:
-           | container_name (str): The name of the container to create. 
-           | public_access (CONTAINER_ACCESS_TYPES, optional): The level of public access for the container. Defaults to Private.
+           | **container_name** (str): The name of the container to create. 
+           | **public_access** (CONTAINER_ACCESS_TYPES, optional): The level of public access for the container. Defaults to Private.
 
         Returns:
             None
@@ -462,7 +462,7 @@ class Blob(StorageAccountVirtualClass):
         Deletes a container from the Azure Blob Storage, if it exists.
 
         Args:
-           | container_name (str): The name of the container to delete. 
+           | **container_name** (str): The name of the container to delete. 
         
         Returns:
            | None
