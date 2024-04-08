@@ -1,5 +1,4 @@
 import abc
-from atexit import register
 from io import BytesIO
 import pandas as pd
 import polars as pl
@@ -13,7 +12,6 @@ from itertools import product
 import polars as pl
 from ..Utils import *
 from ..Exceptions import *
-import logging
 import csv
 
 
@@ -184,7 +182,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     def read_csv_file(self, container_name:str, directory_path:str, file_name:str,
-                      engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8",
+                      engine:ENGINE_TYPES ='pandas', encoding:ENCODING_TYPES="UTF-8",
                       delimiter:str=',', is_first_row_as_header:bool=False,
                       skip_rows:int=0, skip_blank_lines=True,quoting:str=None, tech_columns:bool=False):
         """
@@ -222,7 +220,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
             df =  add_tech_columns(df,container_name,directory_path.replace("\\","/"),file_name)
         return df
     
-    def read_csv_folder(self,container_name:str,directory_path:str,engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8", delimiter:str = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:str=None,tech_columns:bool=False,recursive:bool=False):
+    def read_csv_folder(self,container_name:str,directory_path:str,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES = "UTF-8", delimiter:str = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:str=None,tech_columns:bool=False,recursive:bool=False):
         """
         Reads multiple csv files from a folder and returns their content as a Pandas DataFrame.
 
@@ -266,7 +264,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
     
 
     
-    def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine: ENGINE_TYPES ='polars',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets=None,is_check_sheet_exist:bool=False,tech_columns:bool=False):
+    def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine:ENGINE_TYPES ='pandas',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets=None,is_check_sheet_exist:bool=False,tech_columns:bool=False):
         """
         Reads an excel file and returns its content as a Dictionary.
 
@@ -342,7 +340,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         return list_of_dff
     
     
-    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:str = ";",is_first_row_as_header:bool = True,quoting:str=None,escape:str=None, engine: ENGINE_TYPES ='polars',replace_to_empty="Default"):
+    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:str = ";",is_first_row_as_header:bool = True,quoting:str=None,escape:str=None, engine:ENGINE_TYPES ='pandas',replace_to_empty="Default"):
         """
         Saves a Pandas DataFrame as CSV format.
       
@@ -366,19 +364,23 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         Raises:
            | None
         """
-         
+        output_info = {"container_name":container_name,"directory_path":directory_path,"file_name":file_name,
+                       "partition_columns":partition_columns,"encoding":encoding,
+                       "delimiter":delimiter,"is_first_row_as_header":is_first_row_as_header,
+                       "quoting":quoting,"escape":escape,"engine":engine}
         if replace_to_empty == "Default":
             to_replace_list = NAN_VALUES_REGEX
         elif isinstance(replace_to_empty, str):
             to_replace_list=list(replace_to_empty,)
-        elif isinstance(replace_to_empty, list):
+        elif isinstance(replace_to_empty, list) or isinstance(replace_to_empty, tuple):
             to_replace_list = replace_to_empty
-        
+        output_info["replace_to_empty"] = to_replace_list
         
         if isinstance(df, pd.DataFrame):
+            output_info["type_input"] = "df_polars"
             if df.empty:
                 return -1
-            df = df.replace({r"_x([0-9a-fA-F]{4})_": ""}, regex=True)
+            #df = df.replace({r"_x([0-9a-fA-F]{4})_": ""}, regex=True)
             df = df.replace(regex='\r\n',value= ' ', ).replace(regex='\n',value= ' ')
             
             if replace_to_empty is not None:
@@ -390,11 +392,12 @@ class StorageUtillity(metaclass=abc.ABCMeta):
                 df = pl.from_pandas(df)
 
         elif isinstance(df, pl.DataFrame):
+            output_info["type_input"] = "df_pandas"
             if df.is_empty():
                 return -1
             df = df.with_columns(pl.col(pl.String).str.replace('\r\n', ' ',literal=False))
             df = df.with_columns(pl.col(pl.String).str.replace('\n', ' ',literal=False))
-            df = df.with_columns(pl.col(pl.String).str.replace(r"_x([0-9a-fA-F]{4})_", "",literal=False))
+            #df = df.with_columns(pl.col(pl.String).str.replace(r"_x([0-9a-fA-F]{4})_", "",literal=False))
 
             if replace_to_empty is not None:
                 for x in to_replace_list:
@@ -405,8 +408,27 @@ class StorageUtillity(metaclass=abc.ABCMeta):
             
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
+        else:
+            output_info["type_input"] = "list_object"
+            
+            if engine == 'pandas':
+                try:
+                    output_info["convert_to_str"] = False
+                    df = pd.DataFrame.from_dict(df)
+                except:
+                    output_info["convert_to_str"] = True
+                    df = pd.DataFrame.from_dict(df,dtype='str')
+            elif engine == 'polars':
+                try:
+                    output_info["convert_to_str"] = False
+                    df = pl.from_dicts(df,infer_schema_length=300)
+                except:
+                    output_info["convert_to_str"] = True
+                    schema  = {f"{k}":pl.String for k in df[0].keys()}
+                    df = pl.from_dicts(df,schema_overrides=schema)
         
         if partition_columns:
+            output_info["file_paths"] = list()
             partition_dict = {}
             for x in partition_columns:
                 partition_dict[x] = df[x].unique()
@@ -437,8 +459,9 @@ class StorageUtillity(metaclass=abc.ABCMeta):
                             df_reset.to_csv(buf,index=False, sep=delimiter,encoding=encoding,header=is_first_row_as_header,escapechar=escape,decimal='.',quoting=csv.QUOTE_NONE,doublequote=False)
                         buf.flush()
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name  +"/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)
-
+                        file_name_part = f"{uuid.uuid4().hex}.csv"
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name  +"/".join(partition_path),file_name_part,True)
+                        output_info["file_paths"].append("/".join(partition_path)+"/"+file_name_part)
 
                 if isinstance(df_part, pl.DataFrame):
                     for d1 in d:
@@ -458,7 +481,9 @@ class StorageUtillity(metaclass=abc.ABCMeta):
                                 df_reset.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_style='never')
                             buf.flush()
                             buf.seek(0)
-                            self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/".join(partition_path),f"{uuid.uuid4().hex}.csv",True)                                      
+                            file_name_part = f"{uuid.uuid4().hex}.csv"
+                            self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + file_name + "/".join(partition_path),file_name_part,True)
+                            output_info["file_paths"].append("/".join(partition_path)+"/"+file_name_part)                   
         else:
             buf = BytesIO()
             
@@ -482,7 +507,8 @@ class StorageUtillity(metaclass=abc.ABCMeta):
             else:  
                 with pl.Config(
                     thousands_separator=None,
-                    decimal_separator="." 
+                    decimal_separator="."
+                    
                 ):
                     if quoting is not None:
                         df.write_csv(buf, separator=delimiter, has_header=is_first_row_as_header,quote_char=quoting,  quote_style="always")
@@ -493,10 +519,11 @@ class StorageUtillity(metaclass=abc.ABCMeta):
                     buf.seek(0)
             
                     self.save_binary_file(buf.getvalue(),container_name ,directory_path,file_name_check,True)
+            output_info["file_paths"]=file_name_check
             
-        return 0
+        return output_info
     
-    def save_dataframe_as_parquet(self,df,container_name : str,directory_path:str,engine: ENGINE_TYPES ='polars',partition_columns:list=None,compression:COMPRESSION_TYPES=None):
+    def save_dataframe_as_parquet(self,df,container_name : str,directory_path:str,engine:ENGINE_TYPES ='pandas',partition_columns:list=None,compression:COMPRESSION_TYPES=None):
         """
         Saves a Pandas DataFrame as Parquet format.
 
@@ -529,6 +556,24 @@ class StorageUtillity(metaclass=abc.ABCMeta):
             #df = df.with_columns(pl.col(pl.Utf8).str.replace_all(r"\\n", ""))
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
+        else:
+            #output_info["type_input"] = "list_object"
+            
+            if engine == 'pandas':
+                try:
+                    #output_info["convert_to_str"] = False
+                    df = pd.DataFrame.from_dict(df)
+                except:
+                    #output_info["convert_to_str"] = True
+                    df = pd.DataFrame.from_dict(df,dtype='str')
+            elif engine == 'polars':
+                try:
+                    #output_info["convert_to_str"] = False
+                    df = pl.from_dicts(df,infer_schema_length=300)
+                except:
+                    #output_info["convert_to_str"] = True
+                    schema  = {f"{k}":pl.String for k in df[0].keys()}
+                    df = pl.from_dicts(df,schema_overrides=schema)
                 
         if partition_columns:
             partition_dict = {}
@@ -568,15 +613,17 @@ class StorageUtillity(metaclass=abc.ABCMeta):
             buf = BytesIO()
             if isinstance(df, pd.DataFrame):
                 df_reset = df.reset_index(drop=True)
-                df_reset.to_parquet(buf,allow_truncated_timestamps=True, use_deprecated_int96_timestamps=True,compression=compression)
+                df_reset.to_parquet(buf,compression=compression)
             else:
-                df_reset = df
+                #df_reset = df
                 df.write_parquet(buf,compression=compression)
+            
+            #buf.flush()
             buf.seek(0)
             self.save_binary_file(buf.getvalue(),container_name ,directory_path,f"{uuid.uuid4().hex}.parquet",False)
     
     
-    def save_dataframe_as_xlsx(self, df,container_name : str,directory_path:str ,file_name:str,sheet_name:str,engine:ENGINE_TYPES ='polars',index=False,header=False):
+    def save_dataframe_as_xlsx(self, df,container_name : str,directory_path:str ,file_name:str,sheet_name:str,engine:ENGINE_TYPES ='pandas',index=False,header=False):
         """
         Saves a list of Pandas DataFrames as separate sheets in an Excel file.
 
@@ -609,6 +656,14 @@ class StorageUtillity(metaclass=abc.ABCMeta):
             df = df.with_columns(pl.col(pl.Utf8).str.replace_all("\n", " "))
             if engine != 'polars':
                 df = df.to_pandas(use_pyarrow_extension_array=True)
+        elif isinstance(df, list) and isinstance(df[0],dict):
+            if engine == 'pandas':
+                df = pd.DataFrame.from_dict(df)
+            elif engine == 'polars':
+                df = pl.DataFrame(df)
+        else:
+            raise ValueError("Invalid DataFrame type")
+                
         check_if_file_exist = False
 
         if isinstance(df,pd.DataFrame):
@@ -634,7 +689,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         #excel_buf.close()
         self.save_binary_file(excel_buf.getvalue(),container_name ,directory_path,file_name,True)
     
-    def read_parquet_file(self, container_name: str, directory_path: str,file_name:str,engine:ENGINE_TYPES ='polars', columns: list = None,tech_columns:bool=False):
+    def read_parquet_file(self, container_name: str, directory_path: str,file_name:str,engine:ENGINE_TYPES ='pandas', columns: list = None,tech_columns:bool=False):
 
         """
         Reads a Parquet file and returns its content as a Pandas DataFrame.
@@ -661,7 +716,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
 
         return df
     
-    def read_parquet_folder(self,container_name:str,directory_path:str,engine:ENGINE_TYPES ='polars',columns:list = None,tech_columns:bool=False,recursive:bool=False):
+    def read_parquet_folder(self,container_name:str,directory_path:str,engine:ENGINE_TYPES ='pandas',columns:list = None,tech_columns:bool=False,recursive:bool=False):
         """
         Reads multiple Parquet files from a folder and returns their content as a Pandas DataFrame.
 
@@ -846,7 +901,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
 
-    def save_json_file(self, df, container_name: str, directory_path: str, file_name:str = None, engine: ENGINE_TYPES ='polars', orient:ORIENT_TYPES= 'records'):
+    def save_json_file(self, df, container_name: str, directory_path: str, file_name:str = None, engine:ENGINE_TYPES ='pandas', orient:ORIENT_TYPES= 'records'):
         """
         Saves a Pandas or Polars DataFrame to a JSON file.
 
@@ -942,7 +997,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         return df
 
     def read_json_file(self, container_name:str, directory_path:str, file_name:str, orient: ORIENT_TYPES = 'records',
-                      engine:ENGINE_TYPES='polars', encoding:ENCODING_TYPES="UTF-8", quoting:str=None, tech_columns:bool=False):
+                      engine:ENGINE_TYPES ='pandas', encoding:ENCODING_TYPES="UTF-8", quoting:str=None, tech_columns:bool=False):
         """
         Read a JSON file from a container and return the data as a DataFrame.
 
@@ -968,7 +1023,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         return df
     
     def read_json_folder(self,container_name:str,directory_path:str,orient: ORIENT_TYPES = 'records',
-                         engine: ENGINE_TYPES = 'polars',encoding:ENCODING_TYPES = "UTF-8",quoting:str=None,tech_columns:bool=False,recursive:bool=False):
+                         engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES = "UTF-8",quoting:str=None,tech_columns:bool=False,recursive:bool=False):
         """Reads multiple json files from a folder and returns their content as a Pandas DataFrame.
 
         Args:

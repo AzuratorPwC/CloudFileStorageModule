@@ -3,35 +3,26 @@
 import sys
 from ..StorageUtillity import *
 from azure.storage.filedatalake import DataLakeServiceClient
-
-from azure.identity import DefaultAzureCredential
-from azure.identity import ClientSecretCredential
 import time
 from ..Utils import *
 from ..Exceptions import *
-import logging
 from azure.core.exceptions import HttpResponseError,ResourceNotFoundError,ResourceExistsError
 
 class DataLake(StorageUtillity):
     """Class representing Data Lake"""
  
-    def __init__(self, url:str, access_key:str=None, tenant_id:str=None, application_id:str=None,application_secret:str=None):
+    def __init__(self, url:str, access_key:str=None, credential=None):
         super().__init__()
         tries=3
         for i in range(tries):
             try:
                 try:
-                    if access_key is not None and tenant_id is None and application_id is None and application_secret is None:
+                    if access_key is not None and credential is None:
                         self.__service_client = DataLakeServiceClient(account_url=url, credential=access_key)
-                    elif access_key is  None and tenant_id is None and application_id is None and application_secret is None:
-                        credential = DefaultAzureCredential()
+                    else:
                         self.__service_client = DataLakeServiceClient(account_url=url, credential=credential)
-                    elif access_key is  None and tenant_id is not None and application_id is not None and application_secret is not None:
-                        token_credential = ClientSecretCredential(
-                            tenant_id, application_id,application_secret)
-                        self.__service_client = DataLakeServiceClient(account_url=url, credential=token_credential)
                     
-                    containers = self.__service_client.list_file_systems()     
+                    containers = self.__service_client.list_file_systems()
                     con_num=len(list(containers))
                     dfs = False
                     if con_num > 0:     
@@ -78,10 +69,7 @@ class DataLake(StorageUtillity):
         """
         
         for i in range(tries):
-            save_try = 10
-            start_sleep = 3
-            add_sleep = 2
-            temp_is_overwrite = is_overwrite
+            temp_is_overwrite = True
             try:
                 try:
                     file_system_client = self.__service_client.get_file_system_client(file_system=container_name)
