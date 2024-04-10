@@ -49,7 +49,8 @@ class StorageUtillity(metaclass=abc.ABCMeta):
 
 
     @classmethod
-    def read_csv_bytes(cls,input_bytes:bytes,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8", delimiter :str= ',',is_first_row_as_header :bool= False,skip_rows:int=0, skip_blank_lines = True,quoting:str=None):
+    def read_csv_bytes(cls,input_bytes:bytes,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8", delimiter :str= ',',
+                       is_first_row_as_header :bool= False,skip_rows:int=0, skip_blank_lines = True,quoting:str=None):
         """
         Reads a csv bytes and returns its content as a Pandas DataFrame.
 
@@ -120,7 +121,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
             **public_access** (CONTAINER_ACCESS_TYPES, optional): The level of public access for the container. Defaults to 'Private'.
 
         Raises:
-            NotImplementedError: _description_
+            NotImplementedError: 
         """
         raise NotImplementedError
     
@@ -191,9 +192,9 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         Args:
            | **container_name** (str): The name of the container.
            | **directory_path** (str): The path within the container where the CSV file is located.
-           | **sourcefile_name** (str): The name of the CSV file to be read.
+           | **file_name** (str): The name of the CSV file to be read.
            | **engine** (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars').
-                Defaults to 'polars'.
+                Defaults to 'pandas'.
            | **encoding** (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
                 to "UTF-8".
            | **delimiter** (str, optional): The delimiter used in the CSV file.
@@ -204,6 +205,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
                 Defaults to 0.
            | **skip_blank_lines** (bool, optional): Flag indicating whether to skip blank lines. Defaults
                 to True.
+           | **quoting** (str, optional): Determines the quoting behavior for text fields when reading data from CSV files. Defaults to None.
            | **tech_columns** (bool, optional): Flag indicating whether to add technical columns (e.g.,
                 file path and name). Defaults to False.
 
@@ -214,20 +216,23 @@ class StorageUtillity(metaclass=abc.ABCMeta):
            | None 
         """  
         download_bytes = self.read_binary_file(container_name,directory_path,file_name)
-        df = self.read_csv_bytes(download_bytes, engine, encoding, delimiter,is_first_row_as_header, skip_rows, skip_blank_lines,quoting=quoting)
+        df = self.read_csv_bytes(download_bytes, engine, encoding, delimiter,is_first_row_as_header, skip_rows, 
+                                 skip_blank_lines,quoting=quoting)
         
         if tech_columns:
             df =  add_tech_columns(df,container_name,directory_path.replace("\\","/"),file_name)
         return df
     
-    def read_csv_folder(self,container_name:str,directory_path:str,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES = "UTF-8", delimiter:str = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,quoting:str=None,tech_columns:bool=False,recursive:bool=False):
+    def read_csv_folder(self,container_name:str,directory_path:str,engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES = "UTF-8", 
+                        delimiter:str = ",",is_first_row_as_header:bool = False,skip_rows:int=0,skip_blank_lines=True,
+                        quoting:str=None,tech_columns:bool=False,recursive:bool=False):
         """
         Reads multiple csv files from a folder and returns their content as a Pandas DataFrame.
 
         Args:
            | **container_name** (str): The name of the container containing the csv files.
            | **directory_path** (str): The path of the directory containing the csv files.
-           | **engine** (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to ‘polars’.
+           | **engine** (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to pandas.
            | **encoding** (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults to “UTF-8”.
            | **delimiter** (str, optional): The delimiter used in the CSV file.Defaults to ‘,’.
            | **is_first_row_as_header** (bool, optional): Flag indicating whether the first row is a header. Defaults to False.
@@ -264,7 +269,8 @@ class StorageUtillity(metaclass=abc.ABCMeta):
     
 
     
-    def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine:ENGINE_TYPES ='pandas',skip_rows:int = 0,is_first_row_as_header:bool = False,sheets=None,is_check_sheet_exist:bool=False,tech_columns:bool=False):
+    def read_excel_file(self,container_name:str,directory_path:str,file_name:str,engine:ENGINE_TYPES ='pandas',skip_rows:int = 0,
+                        is_first_row_as_header:bool = False,sheets=None,is_check_sheet_exist:bool=False,tech_columns:bool=False):
         """
         Reads an excel file and returns its content as a Dictionary.
 
@@ -272,15 +278,15 @@ class StorageUtillity(metaclass=abc.ABCMeta):
            | **container_name** (str): The name of the container containing the excel file.
            | **directory_path** (str): The path of the directory containing the excel file.
            | **file_name** (str): The name of the file to be read.
-           | **engine** (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to ‘polars’.
+           | **engine** (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to pandas.
            | **skip_rows** (int, optional): Number of rows to skip from the beginning of the file. Defaults to 0.
            | **is_first_row_as_header** (bool, optional): Flag indicating whether the first row is a header. Defaults to False.
-           | **sheets** (_type_, optional): _description_. Defaults to None.
-           | **is_check_sheet_exist** (bool, optional): _description_. Defaults to False.
+           | **sheets** (_type_, optional): A list of sheet names corresponding to the DataFrames. Defaults to None.
+           | **is_check_sheet_exist** (bool, optional): A flag indicating whether the function should verify the existence of specified sheet names within the Excel file before attempting to read them. Defaults to False.
            | **tech_columns** (bool, optional): Flag indicating whether to add technical columns (e.g., file path and name). Defaults to False.
 
         Raises:
-           | ExcelSheetNotFound: _description_
+           | ExcelSheetNotFound:  An exception raised when a specified Excel sheet is not found within the workbook during the reading process.
 
         Returns:
            Dictionary with sheet names as keys and sheet content as values.
@@ -340,7 +346,9 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         return list_of_dff
     
     
-    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,encoding:ENCODING_TYPES= "UTF-8", delimiter:str = ";",is_first_row_as_header:bool = True,quoting:str=None,escape:str=None, engine:ENGINE_TYPES ='pandas',replace_to_empty="Default"):
+    def save_dataframe_as_csv(self,df,container_name : str,directory_path:str,file_name:str=None,partition_columns:list=None,
+                              encoding:ENCODING_TYPES= "UTF-8", delimiter:str = ";",is_first_row_as_header:bool = True,quoting:str=None,
+                              escape:str=None, engine:ENGINE_TYPES ='pandas',replace_to_empty="Default"):
         """
         Saves a Pandas DataFrame as CSV format.
       
@@ -352,10 +360,10 @@ class StorageUtillity(metaclass=abc.ABCMeta):
            | **partition_columns** (list, optional): A list of columns to be used for partitioning the data. Defaults to None.
            | **encoding** (ENCODING_TYPES, optional): The encoding type of the input data. Defaults to "UTF-8".
            | **delimiter** (str, optional): The delimiter used in the CSV file.Defaults to ';'.
-           | **is_first_row_as_header** (bool, optional): Flag indicating whether the first row is a header. Defaults to False.  
+           | **is_first_row_as_header** (bool, optional): Flag indicating whether the first row is a header. Defaults to True.  
            | **quoting** (str, optional): Determines the quoting behavior for text fields when writing dataframe to a CSV file.
            | **escape** (str, optional): Character used to escape sep and quotechar when appropriate. Defaults to None.
-           | **engine** (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'polars'.
+           | **engine** (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'pandas'.
            | **replace_to_empty** (str, optional): Determine the values that should be replaced with an empty string in the DataFrame before saving it as a CSV file. Defaults to "Default".
 
         Returns:
@@ -523,7 +531,8 @@ class StorageUtillity(metaclass=abc.ABCMeta):
             
         return output_info
     
-    def save_dataframe_as_parquet(self,df,container_name : str,directory_path:str,engine:ENGINE_TYPES ='pandas',partition_columns:list=None,compression:COMPRESSION_TYPES=None):
+    def save_dataframe_as_parquet(self,df,container_name : str,directory_path:str,engine:ENGINE_TYPES ='pandas',partition_columns:list=None,
+                                  compression:COMPRESSION_TYPES=None):
         """
         Saves a Pandas DataFrame as Parquet format.
 
@@ -531,6 +540,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
            | **df** (pd.DataFrame): The DataFrame to be saved.
            | **container_name** (str): The name of the container.
            | **directory_path** (str): The path of the directory within the container.
+           | **engine** (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'pandas'.
            | **partition_columns** (list, optional): A list of columns to be used for partitioning the data. Defaults to None.
            | **compression** (str, optional): The compression method for the Parquet file ('snappy', 'gzip', 'brotli', None). Defaults to None.
 
@@ -623,16 +633,18 @@ class StorageUtillity(metaclass=abc.ABCMeta):
             self.save_binary_file(buf.getvalue(),container_name ,directory_path,f"{uuid.uuid4().hex}.parquet",False)
     
     
-    def save_dataframe_as_xlsx(self, df,container_name : str,directory_path:str ,file_name:str,sheet_name:str,engine:ENGINE_TYPES ='pandas',index=False,header=False):
+    def save_dataframe_as_xlsx(self, df,container_name : str,directory_path:str ,file_name:str,sheet_name:str,engine:ENGINE_TYPES ='pandas',
+                               index=False,header=False):
         """
         Saves a list of Pandas DataFrames as separate sheets in an Excel file.
 
         Args:
-           | **list_df** (list): A list of Pandas DataFrames to be saved as sheets.
-           | **sheets** (list): A list of sheet names corresponding to the DataFrames.
+           | **df** (list): A list of Pandas DataFrames to be saved as sheets.
            | **container_name** (str): The name of the container.
            | **directory_path** (str): The path of the directory within the container.
            | **file_name** (str): The name of the Excel file.
+           | **sheet_name** (str): A parameter specifying the name of the sheet where the DataFrame will be saved within the Excel file.
+           | **engine** (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'pandas'.
            | **index** (bool, optional): If True, includes the DataFrame index in the Excel file. Defaults to False.
            | **header** (bool, optional): If True, includes the DataFrame column names in the Excel file. Defaults to False.
 
@@ -689,7 +701,8 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         #excel_buf.close()
         self.save_binary_file(excel_buf.getvalue(),container_name ,directory_path,file_name,True)
     
-    def read_parquet_file(self, container_name: str, directory_path: str,file_name:str,engine:ENGINE_TYPES ='pandas', columns: list = None,tech_columns:bool=False):
+    def read_parquet_file(self, container_name: str, directory_path: str,file_name:str,engine:ENGINE_TYPES ='pandas', 
+                          columns: list = None,tech_columns:bool=False):
 
         """
         Reads a Parquet file and returns its content as a Pandas DataFrame.
@@ -697,7 +710,8 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         Args:
            | **container_name** (str): The name of the container containing the Parquet file.
            | **directory_path** (str): The path of the directory containing the Parquet file.
-           | **sourcefile_name** (str): The name of the Parquet file to be read.
+           | **file_name** (str): The name of the Parquet file to be read.
+           | **engine** (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'pandas'.
            | **columns** (list, optional): A list of column names to be read from the Parquet file. Defaults to None.
            | **tech_columns** (bool, optional): If True, adds technical columns to the DataFrame. Defaults to False.
 
@@ -716,13 +730,15 @@ class StorageUtillity(metaclass=abc.ABCMeta):
 
         return df
     
-    def read_parquet_folder(self,container_name:str,directory_path:str,engine:ENGINE_TYPES ='pandas',columns:list = None,tech_columns:bool=False,recursive:bool=False):
+    def read_parquet_folder(self,container_name:str,directory_path:str,engine:ENGINE_TYPES ='pandas',columns:list = None,
+                            tech_columns:bool=False,recursive:bool=False):
         """
         Reads multiple Parquet files from a folder and returns their content as a Pandas DataFrame.
 
         Args:
            | **container_name** (str): The name of the container containing the Parquet files.
            | **directory_path** (str): The path of the directory containing the Parquet files.
+           | **engine** (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'pandas'.
            | **folders** (list, optional): A list of folder names to filter the files. Defaults to None.
            | **columns** (list, optional): A list of column names to be read from the Parquet files. Defaults to None.
            | **tech_columns** (bool, optional): If True, adds technical columns to the DataFrame. Defaults to False.
@@ -901,16 +917,17 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
 
-    def save_json_file(self, df, container_name: str, directory_path: str, file_name:str = None, engine:ENGINE_TYPES ='pandas', orient:ORIENT_TYPES= 'records'):
+    def save_json_file(self, df, container_name: str, directory_path: str, file_name:str = None, engine:ENGINE_TYPES ='pandas', 
+                       orient:ORIENT_TYPES= 'records'):
         """
         Saves a Pandas or Polars DataFrame to a JSON file.
 
         Args:
            | **df** ([pd.DataFrame, pl.DataFrame]): The DataFrame to be saved.
            | **container_name** (str): The name of the container.
-           | **directory** (str): The path of the directory within the container.
-           | **file** (str, optional): The name of the JSON file. If not provided, a random name will be generated. Defaults to None.
-           | **engine** (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'polars'.
+           | **directory_path** (str): The path of the directory within the container.
+           | **file_name** (str, optional): The name of the JSON file. If not provided, a random name will be generated. Defaults to None.
+           | **engine** (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'pandas'.
            | **orient** (ORIENT_TYPES, optional): The JSON orientation type ('records', 'split', 'index', 'columns', or 'values'). Defaults to 'records'.
 
         Returns:
@@ -969,7 +986,8 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @classmethod
-    def read_json_bytes(cls,input_bytes:bytes, orient: ORIENT_TYPES = 'records', engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES= "UTF-8",quoting:str=None):
+    def read_json_bytes(cls,input_bytes:bytes, orient: ORIENT_TYPES = 'records', engine:ENGINE_TYPES ='pandas',
+                        encoding:ENCODING_TYPES= "UTF-8",quoting:str=None):
         """Reads a json bytes and returns its content as a Pandas DataFrame.
 
         Args:
@@ -1004,9 +1022,10 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         Args:
            | **container_name** (str): The name of the container.
            | **directory_path** (str): The path within the container where the CSV file is located.
-           | **sourcefile_name** (str): The name of the CSV file to be read.
+           | **file_name** (str): The name of the CSV file to be read.
+           | **orient** (ORIENT_TYPES, optional):  The JSON orientation type ('records', 'split', 'index', 'columns', or 'values'). Defaults to 'records'.
            | **engine** (ENGINE_TYPES, optional): The processing engine to use ('pandas' or 'polars').
-                Defaults to 'polars'.
+                Defaults to 'pandas'.
            | **encoding** (ENCODING_TYPES, optional): The encoding type of the CSV file. Defaults
                 to "UTF-8".
            | **tech_columns** (bool, optional): Flag indicating whether to add technical columns (e.g.,
@@ -1023,14 +1042,15 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         return df
     
     def read_json_folder(self,container_name:str,directory_path:str,orient: ORIENT_TYPES = 'records',
-                         engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES = "UTF-8",quoting:str=None,tech_columns:bool=False,recursive:bool=False):
+                         engine:ENGINE_TYPES ='pandas',encoding:ENCODING_TYPES = "UTF-8",quoting:str=None,tech_columns:bool=False,
+                         recursive:bool=False):
         """Reads multiple json files from a folder and returns their content as a Pandas DataFrame.
 
         Args:
            | **container_name** (str): The name of the container containing the json fils.
            | **directory_path** (str): The path of the directory containing the json files.
            | **orient** (ORIENT_TYPES, optional):  The JSON orientation type ('records', 'split', 'index', 'columns', or 'values'). Defaults to 'records'.
-           | **engine** (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to 'polars'.
+           | **engine** (ENGINE_TYPES, optional): The processing engine to use (‘pandas’ or ‘polars’). Defaults to 'pandas'.
            | **encoding** (ENCODING_TYPES, optional): The encoding type of the json files. Defaults to "UTF-8".
            | **quoting** (str, optional): Determines the quoting behavior for text fields when reading data from a json files. Defaults to None.
            | **tech_columns** (bool, optional): Flag indicating whether to add technical columns. Defaults to False.
