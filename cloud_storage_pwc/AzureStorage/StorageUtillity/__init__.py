@@ -443,8 +443,15 @@ class StorageUtillity(metaclass=abc.ABCMeta):
     
             partition_groups = [dict(zip(partition_dict.keys(),items)) for items in product(*partition_dict.values())]
             partition_groups = [d for d in partition_groups if np.nan not in d.values()]
-
+            
             if file_name is not None:
+                if file_name.endswith('.csv'):
+                    file_name = file_name
+                elif '.' not in file_name:
+                    file_name = f"{file_name}.csv"
+                elif  '.' in file_name and not file_name.endswith('.csv'):
+                    file_name = file_name.rsplit('.', 1)[0] + '.csv'
+
                 file_name = file_name + "/"
             else:
                 file_name = ""
@@ -494,11 +501,15 @@ class StorageUtillity(metaclass=abc.ABCMeta):
                             output_info["file_paths"].append("/".join(partition_path)+"/"+file_name_part)                   
         else:
             buf = BytesIO()
-            
-            if file_name:
+
+            if file_name and file_name.endswith('.csv'):
                 file_name_check = file_name
+            elif file_name and '.' not in file_name:
+                file_name_check = f"{file_name}.csv"
+            elif file_name and '.' in file_name and not file_name.endswith('.csv'):
+                file_name_check = file_name.rsplit('.', 1)[0] + '.csv'
             else:
-                file_name_check  = f"{uuid.uuid4().hex}.csv"
+                file_name_check = f"{uuid.uuid4().hex}.csv"
             
             
             if isinstance(df, pd.DataFrame):
@@ -531,7 +542,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
             
         return output_info
     
-    def save_dataframe_as_parquet(self,df,container_name : str,directory_path:str,engine:ENGINE_TYPES ='pandas',partition_columns:list=None,
+    def save_dataframe_as_parquet(self,df,container_name : str,directory_path:str,file_name, engine:ENGINE_TYPES ='pandas',partition_columns:list=None,
                                   compression:COMPRESSION_TYPES=None):
         """
         Saves a Pandas DataFrame as Parquet format.
@@ -540,6 +551,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
            | **df** (pd.DataFrame): The DataFrame to be saved.
            | **container_name** (str): The name of the container.
            | **directory_path** (str): The path of the directory within the container.
+           | **file_name** (str, optional): The name of the file to be saved.
            | **engine** (ENGINE_TYPES, optional): The DataFrame engine type ('pandas' or 'polars'). Defaults to 'pandas'.
            | **partition_columns** (list, optional): A list of columns to be used for partitioning the data. Defaults to None.
            | **compression** (str, optional): The compression method for the Parquet file ('snappy', 'gzip', 'brotli', None). Defaults to None.
@@ -552,6 +564,15 @@ class StorageUtillity(metaclass=abc.ABCMeta):
            | ResourceNotFoundError: If the specified container or directory does not exist.
            | StorageErrorException: If there is an issue with the storage service.
         """
+
+        if file_name and file_name.endswith('.parquet'):
+            file_name_check = file_name
+        elif file_name and '.' not in file_name:
+            file_name_check = f"{file_name}.parquet"
+        elif file_name and '.' in file_name and not file_name.endswith('.parquet'):
+            file_name_check = file_name.rsplit('.', 1)[0] + '.parquet'
+        else:
+            file_name_check = f"{uuid.uuid4().hex}.parquet"
     
         if isinstance(df, pd.DataFrame):
             if df.empty:
@@ -607,7 +628,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
                         buf = BytesIO()
                         df_part.to_parquet(buf,allow_truncated_timestamps=True, use_deprecated_int96_timestamps=True,compression=compression)
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" +"/".join(partition_path),f"{uuid.uuid4().hex}.parquet",False)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" +"/".join(partition_path),file_name_check,False)
 
                 if isinstance(df_part, pl.DataFrame):
                     for d1 in d:
@@ -618,7 +639,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
                         buf = BytesIO()
                         df_part.write_parquet(buf,compression=compression)
                         buf.seek(0)
-                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + "/".join(partition_path),f"{uuid.uuid4().hex}.parquet",False)
+                        self.save_binary_file(buf.getvalue(),container_name ,directory_path +"/" + "/".join(partition_path),file_name_check,False)
         else:
             buf = BytesIO()
             if isinstance(df, pd.DataFrame):
@@ -630,7 +651,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
             
             #buf.flush()
             buf.seek(0)
-            self.save_binary_file(buf.getvalue(),container_name ,directory_path,f"{uuid.uuid4().hex}.parquet",False)
+            self.save_binary_file(buf.getvalue(),container_name ,directory_path,file_name_check,False)
     
     
     def save_dataframe_as_xlsx(self, df,container_name : str,directory_path:str ,file_name:str,sheet_name:str,engine:ENGINE_TYPES ='pandas',
@@ -696,10 +717,19 @@ class StorageUtillity(metaclass=abc.ABCMeta):
             else:
                 excel_buf = BytesIO()
                 df.write_excel(excel_buf, worksheet=sheet_name)
+        
+        if file_name and file_name.endswith('.xlsx'):
+            file_name_check = file_name
+        elif file_name and '.' not in file_name:
+            file_name_check = f"{file_name}.xlsx"
+        elif file_name and '.' in file_name and not file_name.endswith('.xlsx'):
+            file_name_check = file_name.rsplit('.', 1)[0] + '.xlsx'
+        else:
+            file_name_check = f"{uuid.uuid4().hex}.xlsx"
                 
         excel_buf.seek(0)
         #excel_buf.close()
-        self.save_binary_file(excel_buf.getvalue(),container_name ,directory_path,file_name,True)
+        self.save_binary_file(excel_buf.getvalue(),container_name ,directory_path,file_name_check,True)
     
     def read_parquet_file(self, container_name: str, directory_path: str,file_name:str,engine:ENGINE_TYPES ='pandas', 
                           columns: list = None,tech_columns:bool=False):
@@ -917,7 +947,7 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         raise NotImplementedError
     
 
-    def save_json_file(self, df, container_name: str, directory_path: str, file_name:str = None, engine:ENGINE_TYPES ='pandas', 
+    def save_dataframe_as_json(self, df, container_name: str, directory_path: str, file_name:str = None, engine:ENGINE_TYPES ='pandas', 
                        orient:ORIENT_TYPES= 'records'):
         """
         Saves a Pandas or Polars DataFrame to a JSON file.
@@ -956,12 +986,16 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         buf = BytesIO()   
         
         if isinstance(df, pd.DataFrame):
-            df.to_json(buf, orient=orient,lines=True)
+            df.to_json(buf, orient=orient)
         elif isinstance(df, pl.DataFrame):
             df.write_json(buf, row_oriented=(orient=='records'), pretty=True)
 
-        if file_name:
+        if file_name and file_name.endswith('.json'):
             file_name_check = file_name
+        elif file_name and '.' not in file_name:
+            file_name_check = f"{file_name}.json"
+        elif file_name and '.' in file_name and not file_name.endswith('.json'):
+            file_name_check = file_name.rsplit('.', 1)[0] + '.json'
         else:
             file_name_check = f"{uuid.uuid4().hex}.json"
         buf.seek(0)
@@ -1066,20 +1100,17 @@ class StorageUtillity(metaclass=abc.ABCMeta):
         df = None
         if list_files:
             for f in list_files:
-                try:
-                    df_new = self.read_json_file(container_name,directory_path,str(f).removeprefix(directory_path),orient,engine,encoding,quoting, tech_columns)
-                    if engine=='pandas':
-                        if df is None:
-                            df = df_new
-                        else:
-                            df = pd.concat([df, df_new], axis=0, join="outer", ignore_index=True)
-                    elif engine =='polars':
-                        if df is None:
-                            df = df_new
-                        else:
-                            df = pl.concat([df, df_new])
-                except:
-                    print("Failed to read file " + f)
+                df_new = self.read_json_file(container_name,directory_path,str(f).removeprefix(directory_path),orient,engine,encoding,quoting, tech_columns)
+                if engine=='pandas':
+                    if df is None:
+                        df = df_new
+                    else:
+                        df = pd.concat([df, df_new], axis=0, join="outer", ignore_index=True)
+                elif engine =='polars':
+                    if df is None:
+                        df = df_new
+                    else:
+                        df = pl.concat([df, df_new])
             return df
         else:
             raise FolderDataNotFound(f"Folder data {directory_path} not found in container {container_name}")
