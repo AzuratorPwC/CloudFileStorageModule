@@ -17,4 +17,4 @@ Functions that can be used for Data Lake and Azure Blob Storage
 .. automethod:: cloud_storage_pwc.AzureStorage.StorageUtillity.StorageUtillity.save_dataframe_as_csv
 .. automethod:: cloud_storage_pwc.AzureStorage.StorageUtillity.StorageUtillity.save_dataframe_as_parquet
 .. automethod:: cloud_storage_pwc.AzureStorage.StorageUtillity.StorageUtillity.save_dataframe_as_xlsx
-.. automethod:: cloud_storage_pwc.AzureStorage.StorageUtillity.StorageUtillity.save_json_file
+.. automethod:: cloud_storage_pwc.AzureStorage.StorageUtillity.StorageUtillity.save_dataframe_as_json

@@ -13,6 +13,7 @@ Static variables that can be used in variable functions: ::
    CONTAINER_ACCESS_TYPES = Literal['Container', 'Blob','Private']
    NAN_VALUES_REGEX = [np.nan, '#N/A','N/A', '#NA', '-NaN', '-nan', '<NA>', 'NA', 'NULL', 'NaN', 
                            'n/a', 'nan', 'null','none',"NONE",'None' ]
+   AZURE_CREDENTIAL_TYPES =  Literal['DefaultAzureCredential','InteractiveBrowserCredential','DeviceCodeCredential']
 
 
 These variables define specific types and values within a Python scripts:
@@ -46,3 +47,7 @@ These variables define specific types and values within a Python scripts:
 
   | Description: Defines a list of patterns representing NaN (Not a Number) values in data.
   | Purpose: This variable is likely utilized for identifying various representations of missing or undefined values in datasets, facilitating consistent handling and manipulation of such values.
+
+7. **AZURE_CREDENTIAL_TYPES**:
+  | Description: A set of Azure credential types, including DefaultAzureCredential, InteractiveBrowserCredential, and DeviceCodeCredential, used for authenticating with Azure services.
+  | Purpose: To offer a clear enumeration of the available Azure credential types, facilitating secure authentication with Azure services across various application scenarios.
